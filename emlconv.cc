@@ -319,7 +319,37 @@ int main(int argc, char **argv)
         else
           cout << "VERKIEZINGSDEFINITIE: "<<node.name() << endl;
       }
-      sqw.addValue({{"name", electionName}, {"domain", electionDomain}, {"seats", noSeats}}, "election");
+
+      /* 
+ 27,"Noord-Holland","PV27"
+ 29,"Zeeland","PV29"
+ 20,"Groningen","PV20"
+ 23,"Overijssel","PV23"
+ 30,"Noord-Brabant","PV30"
+ 25,"Gelderland","PV25"
+ 28,"Zuid-Holland","PV28"
+ 21,"Fryslân","PV21"
+ 22,"Drenthe","PV22"
+ 26,"Utrecht","PV26"
+ 24,"Flevoland","PV24"
+ 31,"Limburg","PV31"
+      */
+      
+      static map<string,string> pscodes{{"Noord-Holland", "PV27"},
+                                        {"Zeeland", "PV29"},
+                                        {"Groningen", "PV20"},
+                                        {"Overijssel", "PV23"},
+                                        {"Noord-Brabant", "PV30"},
+                                        {"Gelderland", "PV25"},
+                                        {"Zuid-Holland", "PV28"},
+                                        {"Friesland", "PV21"},
+                                        {"Fryslân","PV21"},
+                                        {"Drenthe", "PV22"},
+                                        {"Utrecht", "PV26"},
+                                        {"Flevoland", "PV24"},
+                                        {"Limburg", "PV1"}};
+                                         
+      sqw.addValue({{"name", electionName}, {"domain", electionDomain}, {"seats", noSeats}, {"code", pscodes[electionDomain]}}, "election");
     }
     else if(atoi(formid.c_str())==510) {
       auto start = doc.child("EML").child("Count").child("Election");
@@ -327,7 +357,7 @@ int main(int argc, char **argv)
       // d -> main, c -> kieskring, b -> gemeente (-> a, counting station)
       // TOP     KIESKRING,    GEMEENTE,  STEMBUREAU
 
-      string top("Provincie"), kieskringName, kieskringHSB,  gemeente, stembureau;
+      string top("Provincie"), kieskringName, kieskringHSB,  gemeente, gemeenteId, stembureau;
       int kieskringId=-1;
       if(formid=="510d") {
         // nothing to set
@@ -360,6 +390,7 @@ int main(int argc, char **argv)
         kieskringHSB = "HSB"+to_string(kieskringId);
 
         gemeente=doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier").begin()->value();
+        gemeenteId = doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier").attribute("Id").value();
       }
 
       cout<<"Form "<<formid<<": kieskringName '"<<kieskringName<<"' kieskringHSB '"<< kieskringHSB<<"' kieskringId "<<kieskringId<<endl;
@@ -373,7 +404,7 @@ int main(int argc, char **argv)
           string sc;
           bool isAffiliation=false;
           Candidate cand;
-          cout<<"Hier: "<<cand.id<<endl;
+
           for(const auto& snode : s) {
             string snname = snode.name();
             if(snname=="AffiliationIdentifier") {
@@ -389,14 +420,18 @@ int main(int argc, char **argv)
               if(!isAffiliation) {
                 if(cand.id < 0)
                   sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                                {"gemeenteId", gemeenteId},
                                 {"affid", aff.id}, {"shortcode", cand.shortcode}, {"orderno", orderno}, {"votes", atoi(snode.begin()->value())}}, "candvotecounts");
                 else
                   sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
-                                {"affid", aff.id}, {"candid", cand.id}, {"votes", atoi(snode.begin()->value())}}, "candvotecounts");
+                                {"gemeenteId", gemeenteId},
+                                {"affid", aff.id}, {"candid", cand.id}, {"orderno", cand.id}, {"votes", atoi(snode.begin()->value())}}, "candvotecounts");
+                // repeat orderno here for consistency, even though we don't need it for PS1 elections
                 orderno++;
               }
               else {
                   sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                                {"gemeenteId", gemeenteId},
                                 {"affid", aff.id}, {"votes", atoi(snode.begin()->value())}}, "affvotecounts");
                 
               }
@@ -405,7 +440,42 @@ int main(int argc, char **argv)
               cout<<"Unknown snname in 510 TotalVotes "<<snname<<endl;
 
           }
+        } // what follows is a stupid copy from 'rumeta' from the reporting units
+        else if(sname=="Cast") {
+          cout<<"  total ballots "<<s.begin()->value()<<endl;
+          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+                        {"formid", formid}, {"gemeente", gemeente},
+                        {"gemeenteId", gemeenteId},
+                        {"kind", "totalballots"}, {"value", atoi(s.begin()->value())}}, "meta");
+          
         }
+        else if(sname=="TotalCounted") {
+          cout<<"  totalcounted "<<s.begin()->value()<<endl;
+          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+                        {"formid", formid}, {"gemeente", gemeente},
+                        {"gemeenteId", gemeenteId},
+                        {"kind", "totalcounted"}, {"value", atoi(s.begin()->value())}}, "meta");
+          
+        }
+        else if(sname=="RejectedVotes") {
+          string reason = s.attribute("ReasonCode").value();
+          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+                        {"formid", formid}, {"gemeente", gemeente},
+                        {"gemeenteId", gemeenteId},
+                        {"category", sname},{"kind", reason}, {"value", atoi(s.begin()->value())}}, "meta");
+          
+          cout<<"  rejectedvotes "<<s.begin()->value()<<", reason: "<<reason<<endl;
+        }
+        else if(sname=="UncountedVotes") { // this is METADATA
+          string reason = s.attribute("ReasonCode").value();
+          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+                        {"formid", formid}, {"gemeente", gemeente},
+                        {"gemeenteId", gemeenteId},
+                        {"category", sname},{"kind", reason}, {"value", atoi(s.begin()->value())}}, "meta");
+          
+          cout<<"  uncountedvotes "<<s.begin()->value()<<", reason: "<<reason<<endl;
+        }
+      
       }
       for(const auto&s : start.child("Contests").child("Contest")) {
         string name = s.name();
@@ -462,6 +532,7 @@ int main(int argc, char **argv)
 
                 // XXX we should save a lot of space here and only log the stembureauId, and have a separate table with the info
                 sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                              {"gemeenteId", gemeenteId},
                               {"stembureau", stembureau}, {"stembureauId", stembureauId}, {"postcode", postcode}, {"affid", affid}, {"candid", candid}, {"shortcode", shortcode}, {"votes", validvotes}}, "rucandvotecounts");
               }
               else if(auto aff=s2.child("AffiliationIdentifier")) {
@@ -473,6 +544,7 @@ int main(int argc, char **argv)
 
                 // XXX we should save a lot of space here and only log the stembureauId, and have a separate table with the info
                 sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                              {"gemeenteId", gemeenteId},
                               {"stembureau", stembureau},  {"stembureauId", stembureauId}, {"postcode", postcode},{"affid", affid}, {"votes", validvotes}}, "ruaffvotecounts");
 
               }
@@ -481,6 +553,7 @@ int main(int argc, char **argv)
               cout<<"  total ballots "<<s2.begin()->value()<<endl;
               sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
+                            {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
                             {"stembureauId", stembureauId},
                             {"postcode", postcode},{"kind", "totalballots"}, {"value", atoi(s2.begin()->value())}}, "rumeta");
@@ -490,6 +563,7 @@ int main(int argc, char **argv)
               cout<<"  totalcounted "<<s2.begin()->value()<<endl;
               sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
+                            {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
                             {"stembureauId", stembureauId},
                             {"postcode", postcode},{"kind", "totalcounted"}, {"value", atoi(s2.begin()->value())}}, "rumeta");
@@ -499,6 +573,7 @@ int main(int argc, char **argv)
               string reason = s2.attribute("ReasonCode").value();
               sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
+                            {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
                             {"stembureauId", stembureauId},
                             {"postcode", postcode},{"category", lname},{"kind", reason}, {"value", atoi(s2.begin()->value())}}, "rumeta");
@@ -509,6 +584,7 @@ int main(int argc, char **argv)
               string reason = s2.attribute("ReasonCode").value();
                             sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
+                            {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
                             {"stembureauId", stembureauId},
                             {"postcode", postcode},{"category", lname},{"kind", reason}, {"value", atoi(s2.begin()->value())}}, "rumeta");
