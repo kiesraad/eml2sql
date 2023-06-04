@@ -1,0 +1,69 @@
+
+
+CREATE VIEW uitslag as select initials,prefix,lastname,firstname,woonplaats,gender,count(distinct(candentries.kieskringId)) as kkcount,name,affiliations.id as affid_,sum(votes) as svotes from candentries,candvotecounts,affiliations where candentries.id=candvotecounts.candid and candentries.kieskringId = candvotecounts.kieskringId and candentries.affid=affiliations.id and affiliations.id = candentries.affid and affiliations.kieskringId = candvotecounts.kieskringId and candvotecounts.affid = candentries.affid and formid='510c' group by 1,2,3,4,5,6 order by affid_ asc, candentries.id asc, affiliations.kieskringId asc
+/* uitslag(initials,prefix,lastname,firstname,woonplaats,gender,kkcount,name,affid_,svotes) */;
+CREATE VIEW uitplijst as select candentries.kieskringId, candid, initials,prefix,lastname,firstname,woonplaats,gender,name,affiliations.id as affid_,sum(votes) as svotes from candentries,candvotecounts,affiliations where candentries.id=candvotecounts.candid and candentries.kieskringId = candvotecounts.kieskringId and candentries.affid=affiliations.id and affiliations.id = candentries.affid and affiliations.kieskringId = candvotecounts.kieskringId and candvotecounts.affid = candentries.affid and formid='510c' group by 1,2,affid_ order by affid_, 1, 2 asc
+/* uitplijst(kieskringId,candid,initials,prefix,lastname,firstname,woonplaats,gender,name,affid_,svotes) */;
+CREATE VIEW uitslagp as select candentries.kieskringId, candid, initials,prefix,lastname,firstname,woonplaats,gender,name,affiliations.id as affid_,sum(votes) as svotes from candentries,candvotecounts,affiliations where candentries.id=candvotecounts.candid and candentries.kieskringId = candvotecounts.kieskringId and candentries.affid=affiliations.id and affiliations.id = candentries.affid and affiliations.kieskringId = candvotecounts.kieskringId and candvotecounts.affid = candentries.affid and formid='510c' group by 1,2,affid_ order by affid_, 1, 2 asc
+/* uitslagp(kieskringId,candid,initials,prefix,lastname,firstname,woonplaats,gender,name,affid_,svotes) */;
+
+
+
+
+CREATE VIEW scounts as select rucandvotecounts.shortcode,rucandvotecounts.affid,name,orderno,candentries.initials,candentries.prefix,candentries.lastname,candentries.firstname,candentries.woonplaats,candentries.gender,sum(rucandvotecounts.votes) as svotes from candvotecounts,rucandvotecounts,candentries,affiliations where affiliations.id=rucandvotecounts.affid and affiliations.kieskringId = rucandvotecounts.kieskringId and rucandvotecounts.formid='510d' and candvotecounts.shortcode = rucandvotecounts.shortcode and candentries.affid=candvotecounts.affid and candentries.id = rucandvotecounts.candid  and rucandvotecounts.kieskringId = candentries.kieskringId group by 1 order by rucandvotecounts.affid,orderno
+/* scounts(shortcode,affid,name,orderno,initials,prefix,lastname,firstname,woonplaats,gender,svotes) */;
+
+CREATE VIEW escounts as select scounts.shortcode, scounts.affid, scounts.name, scounts.orderno, scounts.initials, scounts.prefix, scounts.lastname, scounts.firstname, scounts.svotes, scounts.woonplaats, scounts.gender,elected, ranking from scounts left join candresults on candresults.shortcode = scounts.shortcode
+/* escounts(shortcode,affid,name,orderno,initials,prefix,lastname,firstname,svotes,woonplaats,gender,elected,ranking) */;
+
+CREATE VIEW uniaffili as select id,name from affiliations group by 1,2
+/* uniaffili(id,name) */;
+
+
+CREATE VIEW sbcounts as select rucandvotecounts.stembureauId,stembureaus.name,rucandvotecounts.gemeente,rucandvotecounts.affid,affiliations.name,rucandvotecounts.candid,candentries.initials,
+	candentries.prefix,candentries.lastname,
+        candentries.firstname,candentries.woonplaats,candentries.gender,rucandvotecounts.votes as svotes 
+        from candentries, rucandvotecounts, affiliations,stembureaus where 
+        affiliations.id=rucandvotecounts.affid and 
+        affiliations.kieskringId = rucandvotecounts.kieskringId and 
+        rucandvotecounts.formid='510b' and 
+        candentries.affid = rucandvotecounts.affid and 
+	candentries.id = rucandvotecounts.candid and
+        rucandvotecounts.kieskringId = candentries.kieskringId and
+	stembureaus.id = rucandvotecounts.stembureauId
+
+/* sbcounts(stembureauId,affid,name,candid,initials,prefix,lastname,firstname,woonplaats,gender,svotes) */;
+
+
+CREATE VIEW scountsps1 as select candvotecounts.affid, name,
+        candentries.id,candentries.initials,candentries.prefix,candentries.lastname,
+        candentries.firstname,candentries.woonplaats,candentries.gender,
+        candvotecounts.votes as svotes 
+        from candvotecounts,candentries,affiliations 
+        where 
+        affiliations.id=candvotecounts.affid and 
+        candvotecounts.formid='510d' and candentries.id =candvotecounts.candid and
+        candentries.affid=candvotecounts.affid 
+        order by candvotecounts.affid,candentries.id
+/* scountsps1(affid,name,id,initials,prefix,lastname,firstname,woonplaats,gender,svotes) */;
+
+CREATE VIEW escountsps1 as select scountsps1.id,scountsps1.affid, scountsps1.name, candresults.resultorder as orderno,
+        scountsps1.initials, scountsps1.prefix, scountsps1.lastname, scountsps1.firstname, 
+        scountsps1.svotes, scountsps1.woonplaats, scountsps1.gender,elected, ranking 
+        from scountsps1 left join candresults on candresults.resultorder = scountsps1.id and
+        candresults.affid = scountsps1.affid
+/* escountsps1(id,affid,name,initials,prefix,lastname,firstname,svotes,woonplaats,gender,elected,ranking) */;
+
+CREATE VIEW sbmeta as select stembureau,stembureauId,rumeta.gemeente,
+	max(value) filter (where kind='ongeldig') as ongeldig, 
+	max(value) filter (where kind='blanco') as blanco, 
+	max(value) filter (where kind='totalballots') as kiesgerechtigden, 
+	max(value) filter (where kind='totalcounted') as stemmen, 
+	max(value) filter (where kind='geldige volmachtbewijzen') as volmachten,
+	max(value) filter (where kind='geldige kiezerspassen') as kiespassen,
+	max(value) filter (where kind='geldige stempassen') as stempassen,
+	max(value) filter (where kind='toegelaten kiezers') as toegelaten
+from rumeta,stembureaus where formid='510b' and stembureaus.id = stembureauId group by stembureauId;
+
+
+

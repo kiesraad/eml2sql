@@ -1,0 +1,39 @@
+select uitslagp.name, kieskringId, candid, uitslagp.initials,uitslagp.prefix,uitslagp.lastname,uitslagp.firstname,uitslagp.woonplaats,uitslagp.gender,resultorder,elected,ranking,svotes from uitslagp left join candresults on candresults.affid=uitslagp.affid_ and candresults.firstname = uitslagp.firstname and candresults.initials = uitslagp.initials and candresults.prefix = uitslagp.prefix and candresults.lastname = uitslagp.lastname order by affid_;
+
+
+
+# Regio       ;RegioCode;OuderRegioCode;GrootOuderRegioCode;Partij;LijstNummer;LijstNaam  ;KandidaatNummer;KandidaatInitialen;KandidaatVoornaam;KandidaatTussenvoegsel;KandidaatAchternaam;KandidaatWoonplaats;KandidaatGeslacht;VeldType              ;Waarde;Kolom1
+Provincienaam1;CSB      ;              ;                   ;      ;1          ;PARTIJNAAM1;1              ;INITIALEN         ;voornaam         ;                      ;achternaam         ;woonplaats         ;                 ;KandidaatAantalStemmen;855
+
+
+select scounts.shortcode, scounts.affid, scounts.name, scounts.orderno, scounts.initials, scounts.prefix, scounts.lastname, scounts.firstname, scounts.svotes, elected, ranking from scounts left join candresults on candresults.shortcode = scounts.shortcode;
+
+select "Zuid-Holland" as Regio,
+       "CSB" as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        scounts.affid as LijstNummer,
+        scounts.orderno as KandidaatNummer, 
+	scounts.name as LijstNaam,
+        scounts.initials as KandidaatInitialen, 
+	scounts.firstname as KandidaatVoornaam,
+	scounts.prefix as KandidaatTussenvoegsel, 
+        scounts.lastname as KandidaatAchternaam, 
+	scounts.woonplaats as KandidaatWoonplaats, 
+	scounts.gender as KandidaatGeslacht,
+	"KandidaatAantalStemmen" as VeldType,
+	scounts.svotes as Waarde,
+	"" as Kolom1 from scounts left join candresults on candresults.shortcode = scounts.shortcode;
+
+
+
+-- finds differences between 510d reporting units and the actual reporting unit 510cs
+select * from meta,rumeta where meta.formid='510c' and rumeta.formid='510d'
+and meta.kieskringHSB = rumeta.kieskringHSB and meta.kind = rumeta.kind  and
+meta.value != rumeta.value order by kieskringHSB;
+
+-- finds differences between 510c reporting units and the actual reporting unit 510bs
+select * from meta,rumeta where meta.formid='510b' and rumeta.formid='510c'
+and meta.gemeente = rumeta.gemeente and meta.kind = rumeta.kind  and
+meta.value != rumeta.value order by kieskringHSB;
