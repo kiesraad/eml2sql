@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unistd.h>
 #include <set>
+#include <filesystem>
 #include "sqlwriter.hh"
 using namespace std;
 
@@ -170,24 +171,65 @@ Affiliation parseAffiliation(const pugi::xml_node& snode)
   return aff;
 }
 
+
+vector<string> findFiles(const std::string& p, vector<string>& in)
+try
+{
+  cout<<"Starting at "<<p<<endl;
+  for(const auto& entry : std::filesystem::directory_iterator(p)) {
+    std::string filenameStr = entry.path().filename().string();
+    //if the first found entry is directory go thru it
+    if(entry.is_directory()) {
+      std::cout << "Dir: " << filenameStr << '\n';
+      findFiles(entry.path().string(), in);
+    } 
+    //print file name
+    else if(entry.is_regular_file()) {
+      std::cout << "file: " << filenameStr << ", "<<entry.path()<<endl;
+      if(entry.path().extension().string() == ".xml")
+        in.push_back(entry.path().string());
+    }
+  }
+  return in;
+}
+ catch(std::exception &e)
+   {
+     in.push_back(p);
+     return in;
+   }
+vector<string> findFiles(const std::string& p)
+{
+  vector<string> in;
+  return findFiles(p, in);
+}
+
 int main(int argc, char **argv)
 {
   unlink("eml.sqlite");
+
+  vector<string> files;
+  for(int n=1; n< argc; ++n) 
+    files = findFiles(argv[n], files);
+  
   SQLiteWriter sqw("eml.sqlite");
   map<pair<int,int>, string> candnames;
-  for(int n=1; n< argc; ++n) {
+  if(files.empty()) {
+    cout<<"No files found\n";
+    return 0;
+  }
+  for(const auto& filename : files) {
     pugi::xml_document doc;
-    if (!doc.load_file(argv[n])) {
-      cout<<"Could not load "<<argv[n]<<endl;
+    if (!doc.load_file(filename.c_str())) {
+      cout<<"Could not load "<<filename<<endl;
       return -1;
     }
     string formid;
     if(auto emlnode = doc.child("EML")) {
       formid=emlnode.attribute("Id").value();
-      cout<<"This file '"<<argv[n]<<"' is EML form "<< formid <<endl;
+      cout<<"This file '"<<filename<<"' is EML form "<< formid <<endl;
     }
     else {
-      cerr<<"This is not EML"<<endl;
+      cerr<<"This file '"<<filename<<" is not EML"<<endl;
       return -1;
     }
 
@@ -313,7 +355,9 @@ int main(int argc, char **argv)
         }
         else if(name=="ElectionIdentifier") {
           electionName=node.child("ElectionName").begin()->value();
-          electionDomain=node.child("kr:ElectionDomain").begin()->value();
+          if(auto domnode = node.child("kr:ElectionDomain"))
+            if(domnode.begin() != domnode.end()) 
+              electionDomain=domnode.begin()->value();
         }
         
         else
@@ -347,7 +391,7 @@ int main(int argc, char **argv)
                                         {"Drenthe", "PV22"},
                                         {"Utrecht", "PV26"},
                                         {"Flevoland", "PV24"},
-                                        {"Limburg", "PV1"}};
+                                        {"Limburg", "PV31"}};
                                          
       sqw.addValue({{"name", electionName}, {"domain", electionDomain}, {"seats", noSeats}, {"code", pscodes[electionDomain]}}, "election");
     }
@@ -359,9 +403,23 @@ int main(int argc, char **argv)
 
       string top("Provincie"), kieskringName, kieskringHSB,  gemeente, gemeenteId, stembureau;
       int kieskringId=-1;
+      string subcategory, category;
       if(formid=="510d") {
         // nothing to set
-        cout<<"Top level counts"<<endl;
+        // need to detect of this is PS1 or PS2!
+        // <kr:ElectionSubcategory>PS1</kr:ElectionSubcategory>
+        /*
+        <Election>
+          <ElectionIdentifier Id="PS2023_Utrecht">
+               <ElectionName>Provinciale Staten Utrecht 2023</ElectionName>
+               <ElectionCategory>PS</ElectionCategory>
+               <kr:ElectionSubcategory>PS1</kr:ElectionSubcategory>
+        */
+        category = start.child("ElectionIdentifier").child("ElectionCategory").begin()->value();
+        if(auto subnode = start.child("ElectionIdentifier").child("kr:ElectionSubcategory"))
+          subcategory = subnode.begin()->value();
+        cout<<"Top level counts, subcategory = "<<subcategory<<endl;
+        
       }
       else if(formid=="510c") { // kieskring counts
         //        <AuthorityIdentifier Id="HSB1">Maastricht</AuthorityIdentifier>
@@ -442,7 +500,7 @@ int main(int argc, char **argv)
           }
         } // what follows is a stupid copy from 'rumeta' from the reporting units
         else if(sname=="Cast") {
-          cout<<"  total ballots "<<s.begin()->value()<<endl;
+          //          cout<<"  total ballots "<<s.begin()->value()<<endl;
           sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                         {"formid", formid}, {"gemeente", gemeente},
                         {"gemeenteId", gemeenteId},
@@ -450,7 +508,7 @@ int main(int argc, char **argv)
           
         }
         else if(sname=="TotalCounted") {
-          cout<<"  totalcounted "<<s.begin()->value()<<endl;
+          //          cout<<"  totalcounted "<<s.begin()->value()<<endl;
           sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                         {"formid", formid}, {"gemeente", gemeente},
                         {"gemeenteId", gemeenteId},
@@ -464,7 +522,7 @@ int main(int argc, char **argv)
                         {"gemeenteId", gemeenteId},
                         {"category", sname},{"kind", reason}, {"value", atoi(s.begin()->value())}}, "meta");
           
-          cout<<"  rejectedvotes "<<s.begin()->value()<<", reason: "<<reason<<endl;
+          //          cout<<"  rejectedvotes "<<s.begin()->value()<<", reason: "<<reason<<endl;
         }
         else if(sname=="UncountedVotes") { // this is METADATA
           string reason = s.attribute("ReasonCode").value();
@@ -473,7 +531,7 @@ int main(int argc, char **argv)
                         {"gemeenteId", gemeenteId},
                         {"category", sname},{"kind", reason}, {"value", atoi(s.begin()->value())}}, "meta");
           
-          cout<<"  uncountedvotes "<<s.begin()->value()<<", reason: "<<reason<<endl;
+          //          cout<<"  uncountedvotes "<<s.begin()->value()<<", reason: "<<reason<<endl;
         }
       
       }
@@ -490,8 +548,7 @@ int main(int argc, char **argv)
               // <ReportingUnitIdentifier Id="HSB1">Kieskring Maastricht</ReportingUnitIdentifier>
               runame = s2.begin()->value();
               ruId = s2.attribute("Id").value();
-              cout<<"Counts from ReportingUnit: "<<runame<<endl;
-              /* Also has an ID worth storing 1926::SB22, perhaps with the postcode as well */
+              //              cout<<"Counts from ReportingUnit: "<<runame<<endl;
             }
             else if(lname=="Selection") {
               int validvotes = atoi(s2.child("ValidVotes").begin()->value());
@@ -506,7 +563,7 @@ int main(int argc, char **argv)
                   if(epos != string::npos)
                     postcode = stembureau.substr(pcodepos+11, epos - pcodepos - 11);
 
-                  if(postcode.at(4)==' ' && postcode.length()==7) {
+                  if(postcode.length()==7 && postcode.at(4)==' ') {
                     postcode[4]=postcode[5];
                     postcode[5]=postcode[6];
                     postcode.resize(6);
@@ -517,10 +574,31 @@ int main(int argc, char **argv)
                 gemeente = runame;
               }
               else if(formid == "510d") {
-                // <ReportingUnitIdentifier Id="HSB1">Kieskring Maastricht</ReportingUnitIdentifier>
-                kieskringName=runame;
-                kieskringHSB=ruId;
-                kieskringId = atoi(&ruId.at(3));
+                // <ReportingUnitIdentifier Id="HSB1">Kieskring Maastricht</ReportingUnitIdentifier> for PS2
+                // or
+                // ReportingUnitIdentifier Id="0307">Amersfoort</ReportingUnitIdentifier> for PS1
+                if(category=="PS") {
+                  if(subcategory=="PS2") {
+                    kieskringName=runame;
+                    kieskringHSB=ruId;
+                    kieskringId = atoi(&ruId.at(3));
+                  }
+                  else if(subcategory =="PS1") {
+                    kieskringName = "?";
+                    gemeente = runame;
+                    kieskringId = -1;
+                  }
+                }
+                else if(category=="TK") {
+                  kieskringName=runame;
+                  kieskringHSB=ruId;
+                  kieskringId = atoi(&ruId.at(3));
+                }
+                else {
+                  cerr<<"No idea how to do a "<<category<<" ("<<subcategory<<") election"<<endl;
+                  cout<<"runame: "<<runame<<", ruid: "<< ruId<<endl;
+                  exit(1);
+                }
               }
               
               if(auto cand=s2.child("Candidate")) {
@@ -530,10 +608,17 @@ int main(int argc, char **argv)
                   shortcode = sc.value();
                 }
 
-                // XXX we should save a lot of space here and only log the stembureauId, and have a separate table with the info
+                static set<string> stembureauIds;
+                // this saves a ton of space
+                if(!stembureau.empty() && !stembureauIds.count(stembureauId)) {
+                  sqw.addValue({{"id", stembureauId}, {"name", stembureau}, {"gemeente", gemeente}, {"postcode", postcode},
+                    {"gemeenteId", gemeenteId}}, "stembureaus");
+                  stembureauIds.insert(stembureauId);
+                }
+                
                 sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
                               {"gemeenteId", gemeenteId},
-                              {"stembureau", stembureau}, {"stembureauId", stembureauId}, {"postcode", postcode}, {"affid", affid}, {"candid", candid}, {"shortcode", shortcode}, {"votes", validvotes}}, "rucandvotecounts");
+                              {"stembureauId", stembureauId}, {"affid", affid}, {"candid", candid}, {"shortcode", shortcode}, {"votes", validvotes}}, "rucandvotecounts");
               }
               else if(auto aff=s2.child("AffiliationIdentifier")) {
                 affid = atoi(aff.attribute("Id").value());
@@ -550,7 +635,7 @@ int main(int argc, char **argv)
               }
             }
             else if(lname=="Cast") {
-              cout<<"  total ballots "<<s2.begin()->value()<<endl;
+              //              cout<<"  total ballots "<<s2.begin()->value()<<endl;
               sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
                             {"gemeenteId", gemeenteId},
@@ -560,7 +645,7 @@ int main(int argc, char **argv)
 
             }
             else if(lname=="TotalCounted") {
-              cout<<"  totalcounted "<<s2.begin()->value()<<endl;
+              //              cout<<"  totalcounted "<<s2.begin()->value()<<endl;
               sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
                             {"gemeenteId", gemeenteId},
@@ -578,7 +663,7 @@ int main(int argc, char **argv)
                             {"stembureauId", stembureauId},
                             {"postcode", postcode},{"category", lname},{"kind", reason}, {"value", atoi(s2.begin()->value())}}, "rumeta");
 
-              cout<<"  rejectedvotes "<<s2.begin()->value()<<", reason: "<<reason<<endl;
+              //              cout<<"  rejectedvotes "<<s2.begin()->value()<<", reason: "<<reason<<endl;
             }
             else if(lname=="UncountedVotes") { // this is METADATA
               string reason = s2.attribute("ReasonCode").value();
@@ -589,7 +674,7 @@ int main(int argc, char **argv)
                             {"stembureauId", stembureauId},
                             {"postcode", postcode},{"category", lname},{"kind", reason}, {"value", atoi(s2.begin()->value())}}, "rumeta");
 
-              cout<<"  uncountedvotes "<<s2.begin()->value()<<", reason: "<<reason<<endl;
+                            //              cout<<"  uncountedvotes "<<s2.begin()->value()<<", reason: "<<reason<<endl;
             }
             else
               cout<<"Unknown 510 field in ReportingUnit: '"<<lname<<"'"<<endl;
@@ -640,7 +725,7 @@ int main(int argc, char **argv)
         
         if(name=="Affiliation") {
           auto aff = parseAffiliation(node.child("AffiliationIdentifier"));
-          cout<<"Affiliation: "<<aff.name<< " ("<<aff.id<<")\n";
+          //          cout<<"Affiliation: "<<aff.name<< " ("<<aff.id<<")\n";
           sqw.addValue({ {"id", aff.id}, {"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB},
                          {"kieskringId", kieskringId}, {"name", aff.name}}, "affiliations");
 
@@ -648,7 +733,7 @@ int main(int argc, char **argv)
             string cname = c.name();
             if(cname=="Candidate") {
               auto cand = parseCandidate(c);
-              cout << cand.printName()<< " (" <<cand.id <<")"<<endl;
+              //              cout << cand.printName()<< " (" <<cand.id <<")"<<endl;
               candnames[{aff.id, cand.id}]  = cand.initials + (cand.prefix.empty() ? "" : (" "+cand.prefix)) + " " + cand.lastname;
               sqw.addValue({{"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"id", cand.id}, {"affid", aff.id},
                             {"firstname", cand.firstname}, {"initials", cand.initials}, {"prefix", cand.prefix}, {"lastname", cand.lastname},
@@ -680,23 +765,20 @@ int main(int argc, char **argv)
         Candidate cand;
         if(const auto& snode= sel.child("AffiliationIdentifier")) {
           aff = parseAffiliation(snode);
-          cout<<"Party name: "<<aff.name<< " ("<<aff.id<<")\n";
+          //          cout<<"Party name: "<<aff.name<< " ("<<aff.id<<")\n";
         }
         else if(const auto& snode= sel.child("Candidate")) {
           cand = parseCandidate(snode);
-
-
-          
-          cout<<"Candidate name: "<<cand.printName()<<", id "<<cand.id<<endl;
+          //          cout<<"Candidate name: "<<cand.printName()<<", id "<<cand.id<<endl;
           ranking = atoi(sel.child("Ranking").begin()->value());
-          cout<<" ranking: "<<ranking<<endl;
+          //          cout<<" ranking: "<<ranking<<endl;
         }
         bool elected = ((string)sel.child("Elected").begin()->value())=="yes";
         /*
         <Ranking>1</Ranking>
           <Elected>yes</Elected>
         */
-        cout<<" elected: "<<elected<<endl;
+        //        cout<<" elected: "<<elected<<endl;
         if(ranking > 0)
           sqw.addValue({{"affid", aff.id}, {"resultorder", cand.id},
                         {"shortcode", cand.shortcode},
@@ -711,9 +793,6 @@ int main(int argc, char **argv)
         else
           sqw.addValue({{"affid", aff.id}, {"name", aff.name}},
                        "affresults");
-          
-                                                
-
       }
     }
     else {
