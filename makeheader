@@ -1,0 +1,24 @@
+.header on
+.mode csv
+.output try.csv
+.separator ;
+
+-- Provincienaam1;CSB;;;;;;;;;;;;;Kiesgerechtigden;16315
+
+select "" as Regio,
+       "" as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"" as VeldType,
+	"" as Waarde,
+	"" as Kolom1;
