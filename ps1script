@@ -1,0 +1,170 @@
+.header on
+.mode csv
+.output try.csv
+.separator ;
+
+-- Provincienaam1;CSB;;;;;;;;;;;;;Kiesgerechtigden;16315
+
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"Kiesgerechtigden" as VeldType,
+	sum(value) as Waarde,
+	"" as Kolom1 from rumeta,election where formid='510d' and kind='totalballots';
+.header off
+
+-- Provincienaam1;CSB;;;;;;;;;;;;;AantalGeldigeStemmen;10232
+
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalGeldigeStemmen" as VeldType,
+	sum(value) as Waarde,
+	"" as Kolom1 from rumeta,election where formid='510d' and kind='totalcounted';
+
+
+-- Provincienaam1;CSB;;;;;;;;;;;;;AantalOngeldigeStemmen;174
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalOngeldigeStemmen" as VeldType,
+	sum(value) as Waarde,
+	"" as Kolom1 from rumeta,election where formid='510d' and kind='ongeldig';
+
+
+
+
+-- Provincienaam1;CSB;;;;;;;;;;;;;AantalBlancoStemmen;118
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalOngeldigeStemmen" as VeldType,
+	sum(value) as Waarde,
+	"" as Kolom1 from rumeta,election where formid='510d' and kind='blanco';
+
+
+-- Provincienaam1;CSB;;;;1;PARTIJNAAM1;;;;;;;;LijstAantalStemmen;2034
+
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        affid as LijstNummer,
+	uniaffili.name as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"LijstAantalStemmen" as VeldType,
+	sum(votes) as Waarde,
+	"" as Kolom1 from candvotecounts,uniaffili,election where 
+	uniaffili.id = candvotecounts.affid and 
+	formid='510d' 
+	group by affid;
+
+-- Provincienaam1;CSB;;;;1;PARTIJNAAM1;;;;;;;;LijstAantalZetels;2 <-- uit Resultaat EML
+
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        candresults.affid as LijstNummer,
+	uniaffili.name as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"LijstAantalZetels" as VeldType,
+	count(1) as Waarde,
+	"" as Kolom1 from candresults,uniaffili,election where elected=1 and uniaffili.id = candresults.affid group by candresults.affid;
+
+-- 
+
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        affid as LijstNummer,
+	escountsps1.name as LijstNaam,
+        orderno as KandidaatNummer, 
+        initials as KandidaatInitialen, 
+	firstname as KandidaatVoornaam,
+	prefix as KandidaatTussenvoegsel, 
+        lastname as KandidaatAchternaam, 
+	woonplaats as KandidaatWoonplaats, 
+	gender as KandidaatGeslacht,
+	"KandidaatAantalStemmen" as VeldType,
+	svotes as Waarde,
+	"" as Kolom1 from escountsps1,election;
+
+select domain as Regio,
+       code as RegioCode,
+	"" as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        affid as LijstNummer,
+	escountsps1.name as LijstNaam,
+        orderno as KandidaatNummer, 
+        initials as KandidaatInitialen, 
+	firstname as KandidaatVoornaam,
+	prefix as KandidaatTussenvoegsel, 
+        lastname as KandidaatAchternaam, 
+	woonplaats as KandidaatWoonplaats, 
+	gender as KandidaatGeslacht,
+	"KandidaatGekozen" as VeldType,
+	1 as Waarde,
+	"" as Kolom1 from escountsps1,election where elected=1;
+

@@ -1,0 +1,8 @@
+#!/bin/sh
+sqlite3 eml.sqlite < lescriptps1
+ssed -i 's:"::g' try.csv 
+ssed  -i "s:;\r$:\r:" try.csv 
+
+sqlite3 eml.sqlite < gsbscript
+ssed -i 's:"::g' try-gsb.csv 
+ssed  -i "s:;\r$:\r:" try-gsb.csv 

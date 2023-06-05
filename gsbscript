@@ -1,0 +1,284 @@
+.header off
+.mode csv
+.output try-gsb.csv
+.separator ;
+
+
+-- Stembureau ASTA;SB4;G0888;;;;;;;;;;;;Kiesgerechtigden;1232
+
+
+select stembureau as Regio,
+        substr(stembureauId,7,5) as RegioCode,
+	'G'||substr(stembureauId,0,5) as OuderRegioCode,
+        code as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"Kiesgerechtigden" as VeldType,
+	value as Waarde,
+	"" as Kolom1 
+	from rumeta,election,stembureaus where formid='510b' and kind='totalballots' and stembureaus.id = stembureauId;
+
+-- Stembureau ASTA;SB4;G0888;;;;;;;;;;;;AantalGeldigeStemmen;795
+
+
+
+
+
+select stembureau as Regio,
+        substr(stembureauId,7,5) as RegioCode,
+	'G'||substr(stembureauId,0,5) as OuderRegioCode,
+        code as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalGeldigeStemmen" as VeldType,
+	value as Waarde,
+	"" as Kolom1 
+	from rumeta,election,stembureaus 
+	where formid='510b' and kind='totalcounted' and stembureaus.id = stembureauId;
+
+-- Stembureau ASTA;SB4;G0888;;;;;;;;;;;;AantalOngeldigeStemmen;2
+
+select stembureau as Regio,
+        substr(stembureauId,7,5) as RegioCode,
+	'G'||substr(stembureauId,0,5) as OuderRegioCode,
+        code as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalOngeldigeStemmen" as VeldType,
+	value as Waarde,
+	"" as Kolom1 from rumeta,election,stembureaus 
+	where formid='510b' and kind='ongeldig' and stembureaus.id = stembureauId;
+
+
+-- Stembureau ASTA;SB4;G0888;;;;;;;;;;;;AantalBlancoStemmen;4
+
+select stembureau as Regio,
+        substr(stembureauId,7,5) as RegioCode,
+	'G'||substr(stembureauId,0,5) as OuderRegioCode,
+        code as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalBlancoStemmen" as VeldType,
+	value as Waarde,
+	"" as Kolom1 from rumeta,election,stembureaus 
+	where formid='510b' and kind='blanco' and stembureaus.id = stembureauId;
+
+
+-- Stembureau ASTA;SB4;G0888;;;1;CDA;;;;;;;;LijstAantalStemmen;182
+
+
+select stembureau as Regio,
+        substr(stembureauId,7,5) as RegioCode,
+	'G'||substr(stembureauId,0,5) as OuderRegioCode,
+        code as GrootOuderRegioCode,
+        "" as Partij,
+        affiliations.id as LijstNummer,
+	affiliations.name as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"LijstAantalStemmen" as VeldType,
+	votes as Waarde,
+	"" as Kolom1 
+	from ruaffvotecounts,affiliations,election,stembureaus
+	where affiliations.kieskringId = ruaffvotecounts.kieskringId and affiliations.id = ruaffvotecounts.affid
+	and formid='510b' and stembureaus.id = stembureauId
+	order by GrootOuderRegioCode, RegioCode, affiliations.id;
+
+--
+
+select sbcounts.name as Regio,
+        substr(stembureauId,7,5) as RegioCode,
+	'G'||substr(stembureauId,0,5) as OuderRegioCode,
+        code as GrootOuderRegioCode,
+        "" as Partij,
+        affid as LijstNummer,
+	sbcounts.name as LijstNaam,
+        candid as KandidaatNummer, 
+        initials as KandidaatInitialen, 
+	firstname as KandidaatVoornaam,
+	prefix as KandidaatTussenvoegsel, 
+        lastname as KandidaatAchternaam, 
+	woonplaats as KandidaatWoonplaats, 
+	gender as KandidaatGeslacht,
+	"KandidaatAantalStemmen" as VeldType,
+	svotes as Waarde,
+	"" as Kolom1 
+	from sbcounts,election
+	order by OuderRegioCode asc, RegioCode asc, affid asc, candid asc;
+
+
+
+--
+
+ -- Zeewolde;G0050;PV24;;;;;;;;;;;;Kiesgerechtigden;17225
+
+select gemeente as Regio,
+        'G'||gemeenteId as RegioCode,
+	code as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"Kiesgerechtigden" as VeldType,
+	value as Waarde,
+	"" as Kolom1 
+	from meta,election where formid='510b' and kind='totalballots';
+
+
+ -- Zeewolde;G0050;PV24;;;;;;;;;;;;AantalGeldigeStemmen;10926
+
+select gemeente as Regio,
+        'G'||gemeenteId as RegioCode,
+	code as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalGeldigeStemmen" as VeldType,
+	value as Waarde,
+	"" as Kolom1 
+	from meta,election where formid='510b' and kind='totalcounted';
+
+ -- Zeewolde;G0050;PV24;;;;;;;;;;;;AantalOngeldigeStemmen;32
+
+select gemeente as Regio,
+        'G'||gemeenteId as RegioCode,
+	code as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalOngeldigeStemmen" as VeldType,
+	value as Waarde,
+	"" as Kolom1 
+	from meta,election where formid='510b' and kind='ongeldig';
+
+ -- Zeewolde;G0050;PV24;;;;;;;;;;;;AantalBlancoStemmen;49
+select gemeente as Regio,
+        'G'||gemeenteId as RegioCode,
+	code as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        "" as LijstNummer,
+	"" as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"AantalBlancoStemmen" as VeldType,
+	value as Waarde,
+	"" as Kolom1 
+	from meta,election where formid='510b' and kind='blanco';
+
+
+ -- Zeewolde;G0050;PV24;;;1;Forum voor Democratie;;;;;;;;LijstAantalStemmen;440
+
+
+select gemeente as Regio,
+        'G'||gemeenteId as RegioCode,
+	code as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        affid as LijstNummer,
+	affiliations.name as LijstNaam,
+        "" as KandidaatNummer, 
+        "" as KandidaatInitialen, 
+	"" as KandidaatVoornaam,
+	"" as KandidaatTussenvoegsel, 
+        "" as KandidaatAchternaam, 
+	"" as KandidaatWoonplaats, 
+	"" as KandidaatGeslacht,
+	"LijstAantalStemmen" as VeldType,
+	votes as Waarde,
+	"" as Kolom1 
+	from affvotecounts,affiliations,election where formid='510b' and affiliations.id = affvotecounts.affid and affiliations.kieskringId = affvotecounts.kieskringId;
+
+ -- Zeewolde;G0050;PV24;;;1;Forum voor Democratie;1;A.K.;;de;Lange;Lelystad;;KandidaatAantalStemmen;182
+ -- Zeewolde;G0050;PV24;;;1;Forum voor Democratie;2;J.V.;;;Postuma;Almere;;KandidaatAantalStemmen;24
+
+
+select gemeente as Regio,
+        'G'||gemeenteId as RegioCode,
+	code as OuderRegioCode,
+        "" as GrootOuderRegioCode,
+        "" as Partij,
+        candentries.affid as LijstNummer,
+	affiliations.name as LijstNaam,
+        candvotecounts.candid as KandidaatNummer, 
+        initials as KandidaatInitialen, 
+	firstname as KandidaatVoornaam,
+	prefix as KandidaatTussenvoegsel, 
+        lastname as KandidaatAchternaam, 
+	woonplaats as KandidaatWoonplaats, 
+	gender as KandidaatGeslacht,
+	"KandidaatAantalStemmen" as VeldType,
+	votes as Waarde,
+	"" as Kolom1 
+	from candvotecounts,affiliations,candentries,election where formid='510b' 
+	and affiliations.id = candvotecounts.affid and 
+	affiliations.kieskringId = candvotecounts.kieskringId and
+	candentries.id = candvotecounts.candid and
+	candentries.affid = candvotecounts.affid and
+	candentries.kieskringId = candvotecounts.kieskringId;
+
