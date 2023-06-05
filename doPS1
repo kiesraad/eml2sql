@@ -1,5 +1,5 @@
 #!/bin/sh
-sqlite3 eml.sqlite < lescriptps1
+sqlite3 eml.sqlite < ps1script
 ssed -i 's:"::g' try.csv 
 ssed  -i "s:;\r$:\r:" try.csv 
 
