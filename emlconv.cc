@@ -175,17 +175,17 @@ Affiliation parseAffiliation(const pugi::xml_node& snode)
 vector<string> findFiles(const std::string& p, vector<string>& in)
 try
 {
-  cout<<"Starting at "<<p<<endl;
+  //  cout<<"Starting at "<<p<<endl;
   for(const auto& entry : std::filesystem::directory_iterator(p)) {
     std::string filenameStr = entry.path().filename().string();
     //if the first found entry is directory go thru it
     if(entry.is_directory()) {
-      std::cout << "Dir: " << filenameStr << '\n';
+      //      std::cout << "Dir: " << filenameStr << '\n';
       findFiles(entry.path().string(), in);
     } 
     //print file name
     else if(entry.is_regular_file()) {
-      std::cout << "file: " << filenameStr << ", "<<entry.path()<<endl;
+      //      std::cout << "file: " << filenameStr << ", "<<entry.path()<<endl;
       if(entry.path().extension().string() == ".xml")
         in.push_back(entry.path().string());
     }
@@ -217,6 +217,7 @@ int main(int argc, char **argv)
     cout<<"No files found\n";
     return 0;
   }
+  string prevElectionId;
   for(const auto& filename : files) {
     pugi::xml_document doc;
     if (!doc.load_file(filename.c_str())) {
@@ -233,6 +234,29 @@ int main(int argc, char **argv)
       return -1;
     }
 
+    string electionId;
+    if(atoi(formid.c_str())==510) {
+      electionId = doc.child("EML").child("Count").child("Election").child("ElectionIdentifier").attribute("Id").value();
+    }
+    else if(atoi(formid.c_str())==230) {
+      electionId = doc.child("EML").child("CandidateList").child("Election").child("ElectionIdentifier").attribute("Id").value();
+    }
+
+    else if(formid == "520")
+      electionId = doc.child("EML").child("Result").child("Election").child("ElectionIdentifier").attribute("Id").value();
+    else
+      electionId = doc.child("EML").child("ElectionEvent").child("Election").child("ElectionIdentifier").attribute("Id").value();
+    if(electionId.empty()) {
+      cerr<<"No election ID in formid '"<<formid<<"'"<<endl;
+      return -1;
+    }
+    /*
+    if(!prevElectionId.empty() && electionId != prevElectionId) {
+      cerr<<"Only one election per database please! Was processing "<<prevElectionId<<", saw new election '"<<electionId<<"'"<<endl;
+      return -1;
+    }
+    */
+    prevElectionId = electionId;
     /* 
        formid: 110a -> Verkiezingsdefinitie
        Mentions the election tree, in which the kieskringen are denoted by their NON-ROMAN numeral if their number was roman
@@ -364,20 +388,6 @@ int main(int argc, char **argv)
           cout << "VERKIEZINGSDEFINITIE: "<<node.name() << endl;
       }
 
-      /* 
- 27,"Noord-Holland","PV27"
- 29,"Zeeland","PV29"
- 20,"Groningen","PV20"
- 23,"Overijssel","PV23"
- 30,"Noord-Brabant","PV30"
- 25,"Gelderland","PV25"
- 28,"Zuid-Holland","PV28"
- 21,"Fryslân","PV21"
- 22,"Drenthe","PV22"
- 26,"Utrecht","PV26"
- 24,"Flevoland","PV24"
- 31,"Limburg","PV31"
-      */
       
       static map<string,string> pscodes{{"Noord-Holland", "PV27"},
                                         {"Zeeland", "PV29"},
@@ -393,7 +403,7 @@ int main(int argc, char **argv)
                                         {"Flevoland", "PV24"},
                                         {"Limburg", "PV31"}};
                                          
-      sqw.addValue({{"name", electionName}, {"domain", electionDomain}, {"seats", noSeats}, {"code", pscodes[electionDomain]}}, "election");
+      sqw.addValue({{"id", electionId}, {"electionId", electionId}, {"name", electionName}, {"domain", electionDomain}, {"seats", noSeats}, {"code", pscodes[electionDomain]}}, "election");
     }
     else if(atoi(formid.c_str())==510) {
       auto start = doc.child("EML").child("Count").child("Election");
@@ -451,7 +461,7 @@ int main(int argc, char **argv)
         gemeenteId = doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier").attribute("Id").value();
       }
 
-      cout<<"Form "<<formid<<": kieskringName '"<<kieskringName<<"' kieskringHSB '"<< kieskringHSB<<"' kieskringId "<<kieskringId<<endl;
+      //      cout<<"Form "<<formid<<": kieskringName '"<<kieskringName<<"' kieskringHSB '"<< kieskringHSB<<"' kieskringId "<<kieskringId<<endl;
       auto sels = start.child("Contests").child("Contest").child("TotalVotes");
       Affiliation aff;
       int orderno=1;
@@ -477,18 +487,18 @@ int main(int argc, char **argv)
             else if(snname=="ValidVotes") {
               if(!isAffiliation) {
                 if(cand.id < 0)
-                  sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                  sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
                                 {"gemeenteId", gemeenteId},
                                 {"affid", aff.id}, {"shortcode", cand.shortcode}, {"orderno", orderno}, {"votes", atoi(snode.begin()->value())}}, "candvotecounts");
                 else
-                  sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                  sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
                                 {"gemeenteId", gemeenteId},
                                 {"affid", aff.id}, {"candid", cand.id}, {"orderno", cand.id}, {"votes", atoi(snode.begin()->value())}}, "candvotecounts");
                 // repeat orderno here for consistency, even though we don't need it for PS1 elections
                 orderno++;
               }
               else {
-                  sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                  sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
                                 {"gemeenteId", gemeenteId},
                                 {"affid", aff.id}, {"votes", atoi(snode.begin()->value())}}, "affvotecounts");
                 
@@ -501,7 +511,7 @@ int main(int argc, char **argv)
         } // what follows is a stupid copy from 'rumeta' from the reporting units
         else if(sname=="Cast") {
           //          cout<<"  total ballots "<<s.begin()->value()<<endl;
-          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+          sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                         {"formid", formid}, {"gemeente", gemeente},
                         {"gemeenteId", gemeenteId},
                         {"kind", "totalballots"}, {"value", atoi(s.begin()->value())}}, "meta");
@@ -509,7 +519,7 @@ int main(int argc, char **argv)
         }
         else if(sname=="TotalCounted") {
           //          cout<<"  totalcounted "<<s.begin()->value()<<endl;
-          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+          sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                         {"formid", formid}, {"gemeente", gemeente},
                         {"gemeenteId", gemeenteId},
                         {"kind", "totalcounted"}, {"value", atoi(s.begin()->value())}}, "meta");
@@ -517,7 +527,7 @@ int main(int argc, char **argv)
         }
         else if(sname=="RejectedVotes") {
           string reason = s.attribute("ReasonCode").value();
-          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+          sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                         {"formid", formid}, {"gemeente", gemeente},
                         {"gemeenteId", gemeenteId},
                         {"category", sname},{"kind", reason}, {"value", atoi(s.begin()->value())}}, "meta");
@@ -526,7 +536,7 @@ int main(int argc, char **argv)
         }
         else if(sname=="UncountedVotes") { // this is METADATA
           string reason = s.attribute("ReasonCode").value();
-          sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+          sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                         {"formid", formid}, {"gemeente", gemeente},
                         {"gemeenteId", gemeenteId},
                         {"category", sname},{"kind", reason}, {"value", atoi(s.begin()->value())}}, "meta");
@@ -617,12 +627,12 @@ int main(int argc, char **argv)
                 static set<string> stembureauIds;
                 // this saves a ton of space
                 if(!stembureau.empty() && !stembureauIds.count(stembureauId)) {
-                  sqw.addValue({{"id", stembureauId}, {"name", stembureau}, {"gemeente", gemeente}, {"postcode", postcode},
+                  sqw.addValue({{"electionId", electionId},{"id", stembureauId}, {"name", stembureau}, {"gemeente", gemeente}, {"postcode", postcode},
                     {"gemeenteId", gemeenteId}}, "stembureaus");
                   stembureauIds.insert(stembureauId);
                 }
                 
-                sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
                               {"gemeenteId", gemeenteId},
                               {"stembureauId", stembureauId}, {"affid", affid}, {"candid", candid}, {"shortcode", shortcode}, {"votes", validvotes}}, "rucandvotecounts");
               }
@@ -634,7 +644,7 @@ int main(int argc, char **argv)
                   affname="";
 
                 // XXX we should save a lot of space here and only log the stembureauId, and have a separate table with the info
-                sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
+                sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},
                               {"gemeenteId", gemeenteId},
                               {"stembureau", stembureau},  {"stembureauId", stembureauId}, {"postcode", postcode},{"affid", affid}, {"votes", validvotes}}, "ruaffvotecounts");
 
@@ -642,7 +652,7 @@ int main(int argc, char **argv)
             }
             else if(lname=="Cast") {
               //              cout<<"  total ballots "<<s2.begin()->value()<<endl;
-              sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+              sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
                             {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
@@ -652,7 +662,7 @@ int main(int argc, char **argv)
             }
             else if(lname=="TotalCounted") {
               //              cout<<"  totalcounted "<<s2.begin()->value()<<endl;
-              sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+              sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
                             {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
@@ -662,7 +672,7 @@ int main(int argc, char **argv)
             }
             else if(lname=="RejectedVotes") {
               string reason = s2.attribute("ReasonCode").value();
-              sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+              sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
                             {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
@@ -673,7 +683,7 @@ int main(int argc, char **argv)
             }
             else if(lname=="UncountedVotes") { // this is METADATA
               string reason = s2.attribute("ReasonCode").value();
-                            sqw.addValue({{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+                            sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
                             {"formid", formid}, {"gemeente", gemeente},
                             {"gemeenteId", gemeenteId},
                             {"stembureau", stembureau},
@@ -732,7 +742,7 @@ int main(int argc, char **argv)
         if(name=="Affiliation") {
           auto aff = parseAffiliation(node.child("AffiliationIdentifier"));
           //          cout<<"Affiliation: "<<aff.name<< " ("<<aff.id<<")\n";
-          sqw.addValue({ {"id", aff.id}, {"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB},
+          sqw.addValue({ {"id", aff.id}, {"electionId", electionId},{"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB},
                          {"kieskringId", kieskringId}, {"name", aff.name}}, "affiliations");
 
           for(const auto& c : node) {
@@ -741,7 +751,7 @@ int main(int argc, char **argv)
               auto cand = parseCandidate(c);
               //              cout << cand.printName()<< " (" <<cand.id <<")"<<endl;
               candnames[{aff.id, cand.id}]  = cand.initials + (cand.prefix.empty() ? "" : (" "+cand.prefix)) + " " + cand.lastname;
-              sqw.addValue({{"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"id", cand.id}, {"affid", aff.id},
+              sqw.addValue({{"electionId", electionId},{"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"id", cand.id}, {"affid", aff.id},
                             {"firstname", cand.firstname}, {"initials", cand.initials}, {"prefix", cand.prefix}, {"lastname", cand.lastname},
                             {"gender", cand.gender}, {"woonplaats", cand.locality}
                 }, "candentries");
@@ -786,7 +796,7 @@ int main(int argc, char **argv)
         */
         //        cout<<" elected: "<<elected<<endl;
         if(ranking > 0)
-          sqw.addValue({{"affid", aff.id}, {"resultorder", cand.id},
+          sqw.addValue({{"electionId", electionId},{"affid", aff.id}, {"resultorder", cand.id},
                         {"shortcode", cand.shortcode},
                         {"initials", cand.initials},
                         {"prefix", cand.prefix},
@@ -797,7 +807,7 @@ int main(int argc, char **argv)
                         {"elected", elected},
                         {"ranking", ranking}}, "candresults");
         else
-          sqw.addValue({{"affid", aff.id}, {"name", aff.name}},
+          sqw.addValue({{"electionId", electionId},{"affid", aff.id}, {"name", aff.name}},
                        "affresults");
       }
     }
