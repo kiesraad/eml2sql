@@ -15,10 +15,6 @@ cmake .
 make
 ```
 
-# Documents
-
- * [Dutch EML specification](https://www.kiesraad.nl/binaries/kiesraad/documenten/formulieren/2016/osv/eml-bestanden/specificatiedocument-eml_nl-versie-1.0a/specificatiedocument-eml-nl-1.0.a.pdf)
-
 # Data
 
  * [Source of EML data](https://data.overheid.nl/community/organization/kiesraad)
@@ -37,3 +33,43 @@ mv EML_bestanden_PS2023_deel2 EML_bestanden_PS2023_deel3
 unzip EML_bestanden_PS2023_deel_3.zip
 ```
  
+
+# Running
+
+```bash
+./emlconv EML_bestanden_PS2023_deel3
+sqlite3 eml.sqlite < useful-views
+```
+
+This will generate a SQLite database with some useful views, like for
+example:
+
+```
+-- finds differences between 510d reporting units and the actual reporting unit 510cs
+select * from meta,rumeta where meta.formid='510c' and rumeta.formid='510d'
+and meta.kieskringHSB = rumeta.kieskringHSB and meta.kind = rumeta.kind  and
+meta.value != rumeta.value order by kieskringHSB;
+
+-- finds differences between 510c reporting units and the actual reporting unit 510bs
+select * from meta,rumeta where meta.formid='510b' and rumeta.formid='510c'
+and meta.gemeente = rumeta.gemeente and meta.kind = rumeta.kind  and
+meta.value != rumeta.value order by kieskringHSB;
+```
+
+Or how about some statistics (enter this after running 'sqlite3
+eml.sqlite'):
+
+```
+.mode markdown
+.header on
+
+select stembureau, stembureauId, ongeldig, blanco, kiesgerechtigden,
+stemmen, volmachten, kiespassen, stempassen, toegelaten 
+from sbmeta 
+order by volmachten asc;
+```
+
+# Documents
+
+ * [Dutch EML specification](https://www.kiesraad.nl/binaries/kiesraad/documenten/formulieren/2016/osv/eml-bestanden/specificatiedocument-eml_nl-versie-1.0a/specificatiedocument-eml-nl-1.0.a.pdf)
+
