@@ -609,7 +609,12 @@ int main(int argc, char **argv)
                   kieskringHSB=ruId;
                   kieskringId = atoi(&ruId.at(3));
                 }
-
+		else if(category=="AB") {
+                  kieskringName="?";
+                  kieskringHSB="";
+                  kieskringId = -1;
+                  gemeente = runame;
+                }
                 else {
                   cerr<<"No idea how to do a "<<category<<" ("<<subcategory<<") election"<<endl;
                   cout<<"runame: "<<runame<<", ruid: "<< ruId<<endl;
