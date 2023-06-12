@@ -31,8 +31,7 @@ mv EML_bestanden_PS2023_deel1 EML_bestanden_PS2023_deel2
 unzip EML_bestanden_PS2023_deel_2.zip
 mv EML_bestanden_PS2023_deel2 EML_bestanden_PS2023_deel3
 unzip EML_bestanden_PS2023_deel_3.zip
-```
- 
+``` 
 
 # Running
 
@@ -116,6 +115,22 @@ To make life easy, some views are defined:
  * sbmeta: stembureau metadata pivoted to one row per stembureau
  * uniaffili: one line per affiliation, and its (aff)id
  * .. more to come ..
+
+# CSV generation
+The SQLite database can be used to generate CSV output in the format that
+verkiezingsuitslagen.nl needs. Use the following SQL scripts for this
+purpose:
+
+ * tk-and-ps2script: does Tweede Kamer, multi-kieskring Provinciale Staten
+   and Eerste kamer elections
+ * ps1script: Single kieskring elections
+
+Then there is a script that generates votingbureau (stembureau) level
+output:
+
+ * gsbscript
+
+
 
 # Documents
 
