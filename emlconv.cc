@@ -350,6 +350,7 @@ int main(int argc, char **argv)
       //
       int noSeats;
       string electionName, electionDomain;
+      string category, subcategory;
       for(const auto& node : start) {
         string name = node.name();
         if(name=="kr:ElectionTree") {
@@ -382,6 +383,14 @@ int main(int argc, char **argv)
           if(auto domnode = node.child("kr:ElectionDomain"))
             if(domnode.begin() != domnode.end()) 
               electionDomain=domnode.begin()->value();
+          if(auto catnode = node.child("ElectionCategory"))
+            if(catnode.begin() != catnode.end()) 
+              category=catnode.begin()->value();
+          if(auto subcatnode = node.child("kr:ElectionSubcategory"))
+            if(subcatnode.begin() != subcatnode.end()) 
+              subcategory=subcatnode.begin()->value();
+
+          
         }
         
         else
@@ -402,10 +411,40 @@ int main(int argc, char **argv)
                                         {"Utrecht", "PV26"},
                                         {"Flevoland", "PV24"},
                                         {"Limburg", "PV31"}};
-                                         
-      sqw.addValue({{"id", electionId}, {"electionId", electionId}, {"name", electionName}, {"domain", electionDomain}, {"seats", noSeats}, {"code", pscodes[electionDomain]}}, "election");
+
+      static map<string,string> wscodes{{"Aa en Maas","W0654"},
+                                        {"Amstel, Gooi en Vecht","W0155"},
+                                        {"Brabantse Delta","W0652"},
+                                        {"De Dommel","W0539"},
+                                        {"De Stichtse Rijnlanden","W0636"},
+                                        {"Delfland","W0372"},
+                                        {"Drents Overijsselse Delta","W0664"},
+                                        {"Fryslân","W0653"},
+                                        {"Hollands Noorderkwartier","W0651"},
+                                        {"Hollandse Delta","W0655"},
+                                        {"Hunze en Aa's","W0646"},
+                                        {"Limburg","W0665"},
+                                        {"Noorderzijlvest","W0647"},
+                                        {"Rijn en IJssel","W0152"},
+                                        {"Rijnland","W0616"},
+                                        {"Rivierenland","W0621"},
+                                        {"Scheldestromen","W0661"},
+                                        {"Schieland en de Krimpenerwaard","W0656"},
+                                        {"Vallei en Veluwe","W0662"},
+                                        {"Vechtstromen","W0663"},
+                                        {"Zuiderzeeland","W0650"}
+      };
+      /*
+Regio,RegioCode,OuderRegioCode
+"Nederland","L528"
+      */
+      
+      sqw.addValue({{"id", electionId}, {"name", electionName}, {"domain", electionDomain},
+                    {"seats", noSeats}, {"category", category}, {"subcategory", subcategory},
+                    {"code", category=="PS" ? pscodes[electionDomain] : wscodes[electionDomain]},
+                    {"oudercode", category=="AB" ? "L528" : ""}}, "election");
     }
-    else if(atoi(formid.c_str())==510) {
+    else if(atoi(formid.c_str())==510) { // votes
       auto start = doc.child("EML").child("Count").child("Election");
       // this contains votes for the current and one level lower:
       // d -> main, c -> kieskring, b -> gemeente (-> a, counting station)

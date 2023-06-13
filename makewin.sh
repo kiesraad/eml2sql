@@ -5,3 +5,4 @@ i686-w64-mingw32-g++ -std=gnu++17 -DMINGW -Iext/sqlite-amalgamation-3420000/ -I 
 i686-w64-mingw32-g++ -std=gnu++17 emlconv.o pugixml.o sqlite3.o sqlwriter.o  -static-libgcc -static-libstdc++ -o emlconv -pthread
 i686-w64-mingw32-strip emlconv.exe 
 zip emlconv-$(date +%Y%m%d-%H%M).zip emlconv.exe doPS1 doPS2 useful-views useful-queries tk-and-ps2script ps1script makeheader
+
