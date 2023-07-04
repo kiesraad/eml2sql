@@ -197,10 +197,13 @@ try
      in.push_back(p);
      return in;
    }
-vector<string> findFiles(const std::string& p)
+
+static int getSBId(const std::string& sb)
 {
-  vector<string> in;
-  return findFiles(p, in);
+  if(auto pos =sb.find("::SB"); pos != string::npos) {
+    return stoi(sb.substr(pos+4));
+  }
+  throw runtime_error("Could not convert stembureau id "+sb+": ::SB missing");
 }
 
 int main(int argc, char **argv)
@@ -450,7 +453,8 @@ Regio,RegioCode,OuderRegioCode
       // d -> main, c -> kieskring, b -> gemeente (-> a, counting station)
       // TOP     KIESKRING,    GEMEENTE,  STEMBUREAU
 
-      string top("Provincie"), kieskringName, kieskringHSB,  gemeente, gemeenteId, stembureau;
+      string top("Provincie"), kieskringName, kieskringHSB,  gemeente, stembureau;
+      int gemeenteId=-1;
       int kieskringId=-1;
       string subcategory, category;
       if(formid=="510d") {
@@ -497,7 +501,7 @@ Regio,RegioCode,OuderRegioCode
         kieskringHSB = "HSB"+to_string(kieskringId);
 
         gemeente=doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier").begin()->value();
-        gemeenteId = doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier").attribute("Id").value();
+        gemeenteId = stoi(doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier").attribute("Id").value());
       }
 
       //      cout<<"Form "<<formid<<": kieskringName '"<<kieskringName<<"' kieskringHSB '"<< kieskringHSB<<"' kieskringId "<<kieskringId<<endl;
@@ -590,7 +594,8 @@ Regio,RegioCode,OuderRegioCode
           int affid=-1;
           string affname;
           string runame, ruId;
-          string stembureau, stembureauId, postcode;
+          string stembureau, postcode;
+          int stembureauId=-1;
           for(const auto& s2 : s) {
             string lname = s2.name();
             if(lname=="ReportingUnitIdentifier") {
@@ -605,7 +610,7 @@ Regio,RegioCode,OuderRegioCode
               if(formid=="510b") {
                 // <ReportingUnitIdentifier Id="0965::SB1">Stembureau Gemeentehuis (postcode: 6369 AH)</ReportingUnitIdentifier>
                 stembureau = runame;
-                stembureauId = ruId;
+                stembureauId = getSBId(ruId); // strips 0965::
                 if(auto pcodepos = stembureau.find("(postcode: "); pcodepos != string::npos) {
                   auto epos = stembureau.find(")", pcodepos);
 
@@ -668,12 +673,12 @@ Regio,RegioCode,OuderRegioCode
                   shortcode = sc.value();
                 }
 
-                static set<string> stembureauIds;
+                static set<pair<int,int>> stembureauIds;
                 // this saves a ton of space
-                if(!stembureau.empty() && !stembureauIds.count(stembureauId)) {
+                if(!stembureau.empty() && !stembureauIds.count({gemeenteId,stembureauId})) {
                   sqw.addValue({{"electionId", electionId},{"id", stembureauId}, {"name", stembureau}, {"gemeente", gemeente}, {"postcode", postcode},
                     {"gemeenteId", gemeenteId}}, "stembureaus");
-                  stembureauIds.insert(stembureauId);
+                  stembureauIds.insert({gemeenteId,stembureauId});
                 }
                 
                 sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"formid", formid}, {"gemeente", gemeente},

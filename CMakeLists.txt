@@ -4,8 +4,8 @@ project(emlconv VERSION 1.0
                   DESCRIPTION "convert eml to sqlite"
                   LANGUAGES CXX)
 
-set(CMAKE_CXX_FLAGS "-Wall -g -Wextra -O3 -Iext/pugixml-1.13/src/")
-
+set(CMAKE_CXX_FLAGS "-Wall -g -Wextra -O3")
+include_directories(ext/pugixml-1.13/src/ ext/cpp-httplib-0.12.6/ ext/nlohmann/)
 
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,4 +17,7 @@ find_package(Threads REQUIRED)
 
 add_executable(emlconv emlconv.cc sqlwriter.cc ext/pugixml-1.13/src/pugixml.cpp)
 target_link_libraries(emlconv pthread  dl sqlite3 )
+
+add_executable(emlserv emlserv.cc sqlwriter.cc  ext/pugixml-1.13/src/pugixml.cpp)
+target_link_libraries(emlserv pthread dl sqlite3 z )
 

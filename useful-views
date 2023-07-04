@@ -20,17 +20,22 @@ CREATE VIEW uniaffili as select id,name from affiliations group by 1,2
 /* uniaffili(id,name) */;
 
 
-CREATE VIEW sbcounts as select rucandvotecounts.stembureauId,stembureaus.name,rucandvotecounts.gemeente,rucandvotecounts.affid,affiliations.name,rucandvotecounts.candid,candentries.initials,
+CREATE VIEW sbcounts as select rucandvotecounts.stembureauId,affiliations.kieskringName,stembureaus.name as sbname,rucandvotecounts.gemeente,rucandvotecounts.gemeenteId as gemeenteId,rucandvotecounts.affid,affiliations.name as affname,rucandvotecounts.candid,candentries.initials,
 	candentries.prefix,candentries.lastname,
-        candentries.firstname,candentries.woonplaats,candentries.gender,rucandvotecounts.votes as svotes 
+        candentries.firstname,candentries.woonplaats,candentries.gender,rucandvotecounts.votes as svotes,
+	rucandvotecounts.electionId as electionId
         from candentries, rucandvotecounts, affiliations,stembureaus where 
+	candentries.electionId = rucandvotecounts.electionId and
+	rucandvotecounts.electionId = affiliations.electionId and
+	affiliations.electionId = stembureaus.electionId and
         affiliations.id=rucandvotecounts.affid and 
         affiliations.kieskringId = rucandvotecounts.kieskringId and 
         rucandvotecounts.formid='510b' and 
         candentries.affid = rucandvotecounts.affid and 
 	candentries.id = rucandvotecounts.candid and
         rucandvotecounts.kieskringId = candentries.kieskringId and
-	stembureaus.id = rucandvotecounts.stembureauId
+	stembureaus.id = rucandvotecounts.stembureauId and
+	stembureaus.gemeenteId = rucandvotecounts.gemeenteId
 
 /* sbcounts(stembureauId,affid,name,candid,initials,prefix,lastname,firstname,woonplaats,gender,svotes) */;
 
