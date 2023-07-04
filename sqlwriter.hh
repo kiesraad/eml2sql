@@ -11,6 +11,7 @@
 #include <mutex>
 #include <thread>
 #endif
+
 #include <iostream>
 
 struct sqlite3;
@@ -34,7 +35,7 @@ public:
   void bindPrep(const std::string& table, int idx, unsigned long long value);
   void bindPrep(const std::string& table, int idx, double value);
   void bindPrep(const std::string& table, int idx, const std::string& value);
-  void execPrep(const std::string& table); 
+  void execPrep(const std::string& table, std::vector<std::unordered_map<std::string, std::string>>* rows=0); 
   void begin();
   void commit();
   void cycle();
@@ -61,9 +62,6 @@ class SQLiteWriter
 public:
   explicit SQLiteWriter(std::string_view fname) : d_db(fname)
   {
-    //    for(const auto& c : d_columns)
-    //      cout <<c.first<<"\t"<<c.second<<endl;
-
     d_db.exec("PRAGMA journal_mode='wal'");
     d_db.begin(); // open the transaction
     d_thread = std::thread(&SQLiteWriter::commitThread, this);
@@ -76,11 +74,14 @@ public:
   void addValueGeneric(const std::string& table, const T& values);
   ~SQLiteWriter()
   {
-    //    std::cerr<<"Destructor called"<<std::endl;
     d_pleasequit=true;
     d_thread.join();
   }
 
+  template<typename T>
+  std::vector<std::unordered_map<std::string,std::string>> queryGen(const std::string& q, const T& values);
+  
+  std::vector<std::unordered_map<std::string,std::string>> query(const std::string& q, const std::initializer_list<var_t>& values);  
 private:
   void commitThread();
   bool d_pleasequit{false};
@@ -90,5 +91,4 @@ private:
   std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> d_columns;
   std::unordered_map<std::string, std::vector<std::string>> d_lastsig;
   bool haveColumn(const std::string& table, std::string_view name);
-
 };
