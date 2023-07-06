@@ -93,8 +93,13 @@ void MiniSQLite::execPrep(const std::string& table, std::vector<std::unordered_m
       break;
     else if(rows && rc == SQLITE_ROW) {
       row.clear();
-      for(int n = 0 ; n < sqlite3_column_count(d_stmts[table]);++n)
-        row[sqlite3_column_name(d_stmts[table], n)]=(const char*)sqlite3_column_text(d_stmts[table], n);
+      for(int n = 0 ; n < sqlite3_column_count(d_stmts[table]);++n) {
+        const char* p = (const char*)sqlite3_column_text(d_stmts[table], n);
+        if(!p) {
+          p="";  // null?
+        }
+        row[sqlite3_column_name(d_stmts[table], n)]=p;
+      }
       rows->push_back(row);
     }
     else
