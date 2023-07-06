@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+
+
+    <div x-data="{ gemeentes: [], gemeenteNaam: '', gemeente: 0, affid: 1, affvotecounts: [],candvotecounts: [], electionID: '', electionName: '' }" x-init="await doStuff($data)">
+      <H1 x-text="electionName"></H1>
+      <table>
+        <tr><th>Gemeente</th><th>Kieskring</th><th>Opkomst</th><th>Bij volmacht</th><th>Kiespas</th><th>Blanco</th><th>Ongeldig</th></tr>
+        <template x-for="g in gemeentes">
+          <tr>
+            <td x-text="g.gemeente"></td>
+            <td x-text="g.kieskring"></td>
+            <td x-text="g.opkomst+'%'"></td>
+            <td x-text="g.volmachtperc+'%'"></td>
+            <td x-text="g.kiespasperc+'%'"></td>
+            <td x-text="g.blancoperc+'%'"></td>
+            <td x-text="g.ongeldigperc+'%'"></td>
+            
+          </tr>
+        </template>
+      </table>
+    </div>
+  </body>
+</html>
+    

@@ -1,0 +1,192 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+
+
+    <div x-data="{ gemeentes: [], stembureaus: [], stembureau: -1, stembureauNaam: '', gemeenteNaam: '', gemeente: -1, affid: 1, affvotecounts: [],candvotecounts: [], electionID: '', electionName: '' }" x-init="await doStuff($data)">
+      <H1 x-text="electionName"></H1>
+      
+        <select x-model="gemeenteNaam" @change="gemeente=$el[$el.selectedIndex].id; stembureau=-1; stembureauNaam='Gemeente'; fetchStembureaus($data); fetchGemeente($data); fetchGemeenteCands($data);">
+          <template x-for="g in gemeentes">
+            <option x-text="g.gemeente" x-bind:id="g.gemeenteId"></option>
+          </template>
+        </select>
+
+        <select x-model="stembureauNaam" @change="stembureau=$el[$el.selectedIndex].id; if(stembureau > 0) { fetchStembureau($data); fetchStembureauCands($data);} else { fetchGemeente($data); fetchGemeenteCands($data); } ">
+          <option id="-1">Gemeente</option>
+          <template x-for="sb in stembureaus">
+            <option x-text="sb.name + ' ('+sb.id+')'" x-bind:id="sb.id"></option>
+          </template>
+        </select>
+
+        
+      <table>
+        <tr valign="top"><td>
+            <H3 x-text="affvotecounts[0].gemeente"></H3>
+            <span x-text="'Kieskring '+affvotecounts[0].kieskring"></span>
+          </td><td></td><td>            <H3 x-text="candvotecounts[0].name"></H3></td></tr>
+        <tr>
+          <td valign="top">
+          <table>
+            <template x-for="c in affvotecounts">
+              <tr @click="affid=c.affid; if(stembureau==-1) fetchGemeenteCands($data); else fetchStembureauCands($data)">
+                <td ><a href="javascript:void(0);"><span x-text="c.affid"></span></a></td>
+                <td x-text="c.name"></td>
+                <td x-text="c.votes"></td>
+              </tr>
+            </template>
+          </table>
+          </td><td>&nbsp;</td>
+          <td valign="top">
+
+            <table>
+              <template x-for="c in candvotecounts">
+                <tr>
+                  <td x-text="c.candid"></td>
+                  <td x-text="c.initials"></td><td x-text="c.firstname"></td>
+                  <td x-text="c.prefix"></td>
+                  <td x-text="c.lastname"></td>
+                  <td x-text="c.woonplaats"></td>
+                  <td x-text="c.gender"></td>
+                  <td x-text="c.votes"></td>
+                </tr>
+              </template>
+            </table>
+
+        </td></tr>
+      </table>
+<!--
+
+    <div x-data="{ affvotecounts: [], electionID: '', electionName: '' }" x-init="fetchStembureau($data)">
+      <H1 x-text="electionName"></H1>
+      <H2 x-text="'Kieskring '+affvotecounts[0].kieskring"></H2>
+          <H3 x-text="affvotecounts[0].gemeente"></H3>
+          <H4 x-text="affvotecounts[0].stembureau"></H4>
+      <table>
+        <template x-for="c in affvotecounts">
+          <tr>
+            <td x-text="c.affid"></td><td x-text="c.name"></td><td x-text="c.votes">
+          </tr>
+        </template>
+      </table>
+    </div>
+-->
+<!--
+    <div x-data="{ candvotecounts: [], electionID: '', electionName: '' }" x-init="fetchStembureauCands($data)">
+      <H1 x-text="electionName"></H1>
+      <H2 x-text="'Kieskring '+candvotecounts[0].kieskringName"></H2> 
+      <H3 x-text="candvotecounts[0].gemeente"></H3>
+          <H4 x-text="candvotecounts[0].sbname"></H4>
+      <table>
+        <template x-for="c in candvotecounts">
+          <tr>
+            <td x-text="c.affid"></td><td x-text="c.affname"></td><td x-text="c.candid"></td>
+            <td x-text="c.initials"></td><td x-text="c.firstname"></td><td x-text="c.lastname"></td><td x-text="c.svotes">
+          </tr>
+        </template>
+      </table>
+    </div>
+-->
+
+<!--
+    <div x-data="{ candidates: [], electionID: '' }" x-init="fetchCandidates($data)">
+      <table>
+        <template x-for="c in candidates">
+          <tr>
+            <td x-text="c.id"></td><td x-text="c.initials"></td><td x-text="c.lastname"></td>
+            <td x-text="c.firstname"></td><td x-text="c.woonplaats"></td>
+          </tr>
+        </template>
+      </table>
+    </div>
+    -->
+<!--    
+    <div x-data="{ message: '', kieskringen: [], 
+                 affiliations: [], grid: {}, kieskringVotes: {}, 
+                 totkieskringen510d: 0,
+                 totkieskringen510c: 0,
+                 totkieskringen510b: 0,
+                 totkieskringen510a: 0,
+                 totaffs510d: 0,
+                 totaffs510c: 0,
+                 totaffs510b: 0,
+                 totaffs510a: 0,
+                 electionID: '',
+                 electionName: '',
+                     }" x-init="doFetch($data);">
+      <H2 x-text="electionName"></H2>
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Aff</th>
+          <template x-for="kieskring in kieskringen" :key="kieskring.kieskringId">
+            <th style="min-width:30px; text-align: center;" x-text="kieskring.kieskringId"></th>
+          </template>
+          <th></th>
+          <th style="min-width:30px; text-align: center;">510d</th>
+          <th style="min-width:30px; text-align: center;">510c</th>
+          <th style="min-width:30px; text-align: center;">510b</th>
+          <th style="min-width:30px; text-align: center;">510a</th>
+        </tr>
+
+        <template x-for="aff in grid">
+          <tr>
+            <td x-text="aff.id"></td>
+            <td x-text="aff.name"></td>
+            
+            <template x-for="kiesk in aff.kiesk">
+              <td x-text="kiesk" style="text-align: center;"></td>
+            </template>
+            <td></td>
+            <td style="text-align: right;" x-text="aff.totvotes" :class="aff.discrepancy && 'discrepant'"></td>
+            <td style="text-align: right;" x-text="aff.votes510c" :class="aff.discrepancy && 'discrepant'" ></td>
+            <td style="text-align: right;" x-text="aff.votes510b" :class="aff.discrepancy && 'discrepant'"></td>
+            <td style="text-align: right;" x-text="aff.votes510a" :class="aff.discrepancy && 'discrepant'"></td>
+          </tr>
+        </template>
+
+        <tr>
+          <td></td><td>510d</td>
+          <template x-for="kiesk in kieskringVotes">
+            <td x-text="kiesk.totvotes" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+          </template>
+          <td x-text="totkieskringen510d" class="sum"></td>
+          <td x-text="totaffs510d" class="sum"></td>
+          <td x-text="totaffs510c" class="sum"></td>
+          <td x-text="totaffs510b" class="sum"></td>
+          <td x-text="totaffs510a" class="sum"></td>
+        </tr>
+        <tr>
+          <td></td><td>510c</td>
+            <template x-for="kiesk in kieskringVotes">
+              <td x-text="kiesk.votes510c" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+            </template>
+          <td x-text="totkieskringen510c" class="sum"></td>
+        </tr>
+        <tr>
+          <td></td><td>510b</td>
+            <template x-for="kiesk in kieskringVotes">
+              <td x-text="kiesk.votes510b" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+            </template>
+          <td x-text="totkieskringen510b" class="sum"></td>
+        </tr>
+        <tr>
+          <td></td><td>510a</td>
+            <template x-for="kiesk in kieskringVotes">
+              <td x-text="kiesk.votes510a" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+            </template>
+          <td x-text="totkieskringen510a" class="sum"></td>
+        </tr>
+
+      </table>
+    </div>
+
+    -->
+    
+  </body>
+</html>

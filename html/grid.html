@@ -1,0 +1,90 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+
+    <div x-data="{ message: '', kieskringen: [], 
+                 affiliations: [], grid: {}, kieskringVotes: {}, 
+                 totkieskringen510d: 0,
+                 totkieskringen510c: 0,
+                 totkieskringen510b: 0,
+                 totkieskringen510a: 0,
+                 totaffs510d: 0,
+                 totaffs510c: 0,
+                 totaffs510b: 0,
+                 totaffs510a: 0,
+                 electionID: '',
+                 electionName: '',
+                     }" x-init="doFetch($data);">
+      <H2 x-text="electionName"></H2>
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Aff</th>
+          <template x-for="kieskring in kieskringen" :key="kieskring.kieskringId">
+            <th style="min-width:30px; text-align: center;" x-text="kieskring.kieskringId"></th>
+          </template>
+          <th></th>
+          <th style="min-width:30px; text-align: center;">510d</th>
+          <th style="min-width:30px; text-align: center;">510c</th>
+          <th style="min-width:30px; text-align: center;">510b</th>
+          <th style="min-width:30px; text-align: center;">510a</th>
+        </tr>
+
+        <template x-for="aff in grid">
+          <tr>
+            <td x-text="aff.id"></td>
+            <td x-text="aff.name"></td>
+            
+            <template x-for="kiesk in aff.kiesk">
+              <td x-text="kiesk" style="text-align: center;"></td>
+            </template>
+            <td></td>
+            <td style="text-align: right;" x-text="aff.totvotes" :class="aff.discrepancy && 'discrepant'"></td>
+            <td style="text-align: right;" x-text="aff.votes510c" :class="aff.discrepancy && 'discrepant'" ></td>
+            <td style="text-align: right;" x-text="aff.votes510b" :class="aff.discrepancy && 'discrepant'"></td>
+            <td style="text-align: right;" x-text="aff.votes510a" :class="aff.discrepancy && 'discrepant'"></td>
+          </tr>
+        </template>
+
+        <tr>
+          <td></td><td>510d</td>
+          <template x-for="kiesk in kieskringVotes">
+            <td x-text="kiesk.totvotes" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+          </template>
+          <td x-text="totkieskringen510d" class="sum"></td>
+          <td x-text="totaffs510d" class="sum"></td>
+          <td x-text="totaffs510c" class="sum"></td>
+          <td x-text="totaffs510b" class="sum"></td>
+          <td x-text="totaffs510a" class="sum"></td>
+        </tr>
+        <tr>
+          <td></td><td>510c</td>
+            <template x-for="kiesk in kieskringVotes">
+              <td x-text="kiesk.votes510c" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+            </template>
+          <td x-text="totkieskringen510c" class="sum"></td>
+        </tr>
+        <tr>
+          <td></td><td>510b</td>
+            <template x-for="kiesk in kieskringVotes">
+              <td x-text="kiesk.votes510b" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+            </template>
+          <td x-text="totkieskringen510b" class="sum"></td>
+        </tr>
+        <tr>
+          <td></td><td>510a</td>
+            <template x-for="kiesk in kieskringVotes">
+              <td x-text="kiesk.votes510a" style="text-align: center;" :class="kiesk.discrepancy && 'discrepant'"></td>
+            </template>
+          <td x-text="totkieskringen510a" class="sum"></td>
+        </tr>
+
+      </table>
+    </div>
+  </body>
+</html>
