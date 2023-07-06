@@ -72,3 +72,10 @@ from rumeta,stembureaus where formid='510b' and stembureaus.id = stembureauId gr
 
 
 
+create index candidx1 on candentries(id, electionId, kieskringId, affId);
+create index candvidx on candvotecounts(affid, candid, gemeenteId);
+create index affidx on affiliations(id, kieskringId);
+create index sbindex on stembureaus(gemeenteId, electionId);
+create index ruaffvcindex on ruaffvotecounts(electionId, gemeenteId, stembureauId, formid);
+create index rucandvcindex on rucandvotecounts(electionId, gemeenteId, stembureauId, formid);
+
