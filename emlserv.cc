@@ -28,14 +28,6 @@ int main(int argc, char**argv)
   httplib::Server svr;
   svr.set_mount_point("/", "./html/");
 
-  auto result=sqw.query("select * from candentries where affid=?", {4});
-
-  for(auto& r : result) {
-    for(const auto& c : r)
-      cout<<c.second<<" ";
-    cout<<endl;
-  }
-
   struct LockedSqw
   {
     SQLiteWriter& sqw;
@@ -63,7 +55,17 @@ int main(int argc, char**argv)
   svr.Get(R"(/gemeentes/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1];
-      auto result = lsqw.query("select gemeenteId,gemeente from affvotecounts where formid='510b' and electionId=? group by 1 order by 1", {electionId});
+      auto result = lsqw.query(
+                               R"(select gemeenteId,gemeente, kieskring, 
+round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
+round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalballots'),1) as volmachtperc,  
+round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kind='totalballots'),2) as blancoperc,
+round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalballots'),2) as ongeldigperc,
+round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalballots'),2) as kiespasperc    
+from meta where formid='510b' and electionId=? group by 1 order by 1)", {electionId});
+
+
+      
       res.set_content(packResults(result), "application/json");
     }
     catch(exception& e) {
@@ -104,16 +106,18 @@ int main(int argc, char**argv)
     }
   });
 
-    //                                     elect gemee  sb
-    svr.Get(R"(/stembureau-candvotecount/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    //                                     elect gemee  sb    affid
+    svr.Get(R"(/stembureau-candvotecount/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1];
       string gemeenteIdstr=req.matches[2];
       string stembureauIdstr=req.matches[3];
+      string affidStr=req.matches[4];
       
       int gemeenteId = atoi(gemeenteIdstr.c_str());
       int stembureauId=atoi(stembureauIdstr.c_str());
-      auto result = lsqw.query("select * from sbcounts where electionId=? and gemeenteId=? and stembureauId=?", {electionId,gemeenteId,stembureauId});
+      int affid = atoi(affidStr.c_str());
+      auto result = lsqw.query("select *, svotes as votes, affname as name from sbcounts where electionId=? and gemeenteId=? and stembureauId=? and affid=?", {electionId,gemeenteId,stembureauId, affid});
       res.set_content(packResults(result), "application/json");
     }
     catch(exception& e) {
@@ -129,6 +133,24 @@ int main(int argc, char**argv)
       int gemeenteId = atoi(gemeenteIdstr.c_str());
 
       auto result = lsqw.query("select * from affvotecounts,affiliations where affvotecounts.electionId=? and gemeenteId=? and formid='510b' and affvotecounts.affid=affiliations.id and affvotecounts.kieskringId=affiliations.kieskringId", {electionId,gemeenteId});
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+
+    svr.Get(R"(/gemeente-candaffvotecount/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string gemeenteIdstr=req.matches[2];
+      string affIdstr=req.matches[3];
+      
+      int gemeenteId = atoi(gemeenteIdstr.c_str());
+      int affId=atoi(affIdstr.c_str());;
+
+      auto result = lsqw.query("select * from candvotecounts,candentries,affiliations where candvotecounts.electionId=? and gemeenteId=? and candvotecounts.affid=? and formid='510b' and candvotecounts.affid=candentries.affid and candvotecounts.kieskringId=candentries.kieskringId and candentries.id = candvotecounts.candid and candvotecounts.electionId = candentries.electionId and affiliations.id=candentries.affid and affiliations.electionId=candvotecounts.electionId and affiliations.kieskringId=candvotecounts.kieskringId", {electionId,gemeenteId, affId});
       res.set_content(packResults(result), "application/json");
     }
     catch(exception& e) {
@@ -355,5 +377,7 @@ int main(int argc, char**argv)
     }
   });
 
-  svr.listen("0.0.0.0", argc==1 ? 8081 : atoi(argv[1]));
+  int port = argc==1 ? 8081 : atoi(argv[1]);
+  cout<<"Binding to port "<<port<<endl;
+  svr.listen("0.0.0.0", port);
 }
