@@ -10,10 +10,33 @@ CREATE VIEW uitslagp as select candentries.kieskringId, candid, initials,prefix,
 
 
 
-CREATE VIEW scounts as select rucandvotecounts.shortcode,rucandvotecounts.affid,name,orderno,candentries.initials,candentries.prefix,candentries.lastname,candentries.firstname,candentries.woonplaats,candentries.gender,sum(rucandvotecounts.votes) as svotes from candvotecounts,rucandvotecounts,candentries,affiliations where affiliations.id=rucandvotecounts.affid and affiliations.kieskringId = rucandvotecounts.kieskringId and rucandvotecounts.formid='510d' and candvotecounts.shortcode = rucandvotecounts.shortcode and candentries.affid=candvotecounts.affid and candentries.id = rucandvotecounts.candid  and rucandvotecounts.kieskringId = candentries.kieskringId group by 1 order by rucandvotecounts.affid,orderno
+CREATE VIEW scounts as select
+rucandvotecounts.shortcode,rucandvotecounts.affid, affiliations.name, orderno,candentries.initials,candentries.prefix,candentries.lastname,candentries.firstname,candentries.woonplaats,candentries.gender,sum(rucandvotecounts.votes)
+as svotes, election.id as electionId 
+from candvotecounts,rucandvotecounts,candentries,affiliations,election
+where affiliations.id=rucandvotecounts.affid and affiliations.kieskringId =
+rucandvotecounts.kieskringId and rucandvotecounts.formid='510d' 
+and candvotecounts.formid='510d'
+and candvotecounts.shortcode = rucandvotecounts.shortcode and
+candentries.affid=candvotecounts.affid and candentries.id =
+rucandvotecounts.candid  and 
+rucandvotecounts.kieskringId = candentries.kieskringId and 
+election.id = candvotecounts.electionId and
+candvotecounts.electionId = rucandvotecounts.electionId and
+rucandvotecounts.electionId=candentries.electionId and
+candentries.electionId =affiliations.electionId
+group by 1 order by rucandvotecounts.affid,orderno;
+
 /* scounts(shortcode,affid,name,orderno,initials,prefix,lastname,firstname,woonplaats,gender,svotes) */;
 
-CREATE VIEW escounts as select scounts.shortcode, scounts.affid, scounts.name, scounts.orderno, scounts.initials, scounts.prefix, scounts.lastname, scounts.firstname, scounts.svotes, scounts.woonplaats, scounts.gender,elected, ranking from scounts left join candresults on candresults.shortcode = scounts.shortcode
+CREATE VIEW escounts as select scounts.shortcode, scounts.affid,
+scounts.name, scounts.electionId, scounts.orderno, scounts.initials,
+scounts.prefix, scounts.lastname, scounts.firstname, scounts.svotes,
+scounts.woonplaats, scounts.gender,elected, ranking 
+from scounts left join candresults on candresults.shortcode = scounts.shortcode
+
+-- THIS NEEDS TO MATCH ON ELECTIONID FOR CANDRESULTS AS WELL!!
+
 /* escounts(shortcode,affid,name,orderno,initials,prefix,lastname,firstname,svotes,woonplaats,gender,elected,ranking) */;
 
 CREATE VIEW uniaffili as select id,name from affiliations group by 1,2
@@ -59,7 +82,7 @@ CREATE VIEW escountsps1 as select scountsps1.id,scountsps1.affid, scountsps1.nam
         candresults.affid = scountsps1.affid
 /* escountsps1(id,affid,name,initials,prefix,lastname,firstname,svotes,woonplaats,gender,elected,ranking) */;
 
-CREATE VIEW sbmeta as select stembureau,stembureauId,rumeta.gemeente,
+CREATE VIEW sbmeta as select stembureau,stembureauId,rumeta.gemeente,rumeta.gemeenteId,rumeta.electionId,
 	max(value) filter (where kind='ongeldig') as ongeldig, 
 	max(value) filter (where kind='blanco') as blanco, 
 	max(value) filter (where kind='totalballots') as kiesgerechtigden, 
@@ -68,7 +91,12 @@ CREATE VIEW sbmeta as select stembureau,stembureauId,rumeta.gemeente,
 	max(value) filter (where kind='geldige kiezerspassen') as kiespassen,
 	max(value) filter (where kind='geldige stempassen') as stempassen,
 	max(value) filter (where kind='toegelaten kiezers') as toegelaten
-from rumeta,stembureaus where formid='510b' and stembureaus.id = stembureauId group by stembureauId;
+from rumeta,stembureaus,election where 
+formid='510b' and 
+stembureaus.id = stembureauId and 
+election.id = stembureaus.electionId and
+rumeta.electionId = stembureaus.electionId
+group by rumeta.gemeenteId,stembureauId;
 
 
 
@@ -79,3 +107,12 @@ create index sbindex on stembureaus(gemeenteId, electionId);
 create index ruaffvcindex on ruaffvotecounts(electionId, gemeenteId, stembureauId, formid);
 create index rucandvcindex on rucandvotecounts(electionId, gemeenteId, stembureauId, formid);
 
+CREATE INDEX rucandvtcidx on rucandvotecounts(shortcode);
+CREATE INDEX candvtcidx on candvotecounts(shortcode);
+CREATE INDEX candreshrt on candresults(shortcode);
+CREATE INDEX candentridx3 on candentries(affid,id,kieskringId);
+
+CREATE INDEX elindex on election(id);
+CREATE INDEX ruelindx on rucandvotecounts(electionId, formid);
+CREATE INDEX formidx on candvotecounts(electionId,formid,shortcode);
+CREATE INDEX ruformidx on rucandvotecounts(electionId,formid,shortcode);
