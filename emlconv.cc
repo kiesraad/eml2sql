@@ -230,10 +230,10 @@ int main(int argc, char **argv)
     string formid;
     if(auto emlnode = doc.child("EML")) {
       formid=emlnode.attribute("Id").value();
-      cout<<"This file '"<<filename<<"' is EML form "<< formid <<endl;
+      cout<<"'"<<filename<<"' is EML form "<< formid <<endl;
     }
     else {
-      cerr<<"This file '"<<filename<<" is not EML"<<endl;
+      cerr<<"'"<<filename<<" is not EML"<<endl;
       return -1;
     }
 
