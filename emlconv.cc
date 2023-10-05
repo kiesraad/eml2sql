@@ -286,7 +286,7 @@ int main(int argc, char **argv)
        For a provincial election: 
          510d has the total counts, and 510d lists the kieskring totals as reporting units
          510c then has the total results of a kieskring, plus the totals reported by the gemeentes
-         510d finally has the results for a gemeeente, plus the individual counting stations as reporting units
+         510b finally has the results for a gemeente, plus the individual counting stations as reporting units
 
 
 
@@ -648,12 +648,12 @@ Regio,RegioCode,OuderRegioCode
                   kieskringHSB=ruId;
                   kieskringId = atoi(&ruId.at(3));
                 }
-		else if(category=="EK") {
+                else if(category=="EK") {
                   kieskringName=runame;
                   kieskringHSB=ruId;
                   kieskringId = atoi(&ruId.at(3));
                 }
-		else if(category=="AB") {
+                else if(category=="AB") {
                   kieskringName="?";
                   kieskringHSB="";
                   kieskringId = -1;
