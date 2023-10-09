@@ -351,7 +351,7 @@ int main(int argc, char **argv)
     if(formid=="110a") { //  verkiezingsdefinitie
       auto start = doc.child("EML").child("ElectionEvent").child("Election");
       //
-      int noSeats;
+      int noSeats = 0;
       string electionName, electionDomain;
       string category, subcategory;
       for(const auto& node : start) {
