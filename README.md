@@ -27,16 +27,23 @@ wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-aba
 wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-abab-5cd0a436dc4f/resources/EML_bestanden_PS2023_deel_2.zip
 wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-abab-5cd0a436dc4f/resources/EML_bestanden_PS2023_deel_3.zip
 unzip EML_bestanden_PS2023_deel_1.zip
-mv EML_bestanden_PS2023_deel1 EML_bestanden_PS2023_deel2
+chmod -R u+rwX  EML_bestanden_PS2023_deel_1
+mv EML_bestanden_PS2023_deel_1 EML_bestanden_PS2023_deel_2
 unzip EML_bestanden_PS2023_deel_2.zip
-mv EML_bestanden_PS2023_deel2 EML_bestanden_PS2023_deel3
+chmod -R u+rwX  EML_bestanden_PS2023_deel_2
+mv EML_bestanden_PS2023_deel_2 EML_bestanden_PS2023_deel_3
 unzip EML_bestanden_PS2023_deel_3.zip
+chmod -R u+rwX  EML_bestanden_PS2023_deel_3
 ``` 
+
+This gets you the results of all provincial elections (Provinciale Staten)
+from 2023. Note that these are 12 completely independent elections, one for
+each province.
 
 # Running
 
 ```bash
-./emlconv EML_bestanden_PS2023_deel3
+./emlconv EML_bestanden_PS2023_deel3/ZuidHolland
 sqlite3 eml.sqlite < useful-views
 ```
 
