@@ -17,10 +17,10 @@ make
 
 # Data
 
- * [Source of EML data](https://data.overheid.nl/community/organization/kiesraad)
+ * [Source of EML data](https://data.overheid.nl/community/organization/kiesraad), has all (recent) Dutch elections
  
 Election data comes as three zip files, which need to be unzipped so their
-data ends up in one place. This is a bit tricky, but try:
+data ends up in one place. The permission bits are also weird. Unpacking this is a bit tricky, but try:
 
 ```bash
 wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-abab-5cd0a436dc4f/resources/EML_bestanden_PS2023_deel_1.zip
@@ -74,6 +74,14 @@ stemmen, volmachten, kiespassen, stempassen, toegelaten
 from sbmeta 
 order by volmachten asc;
 ```
+
+# Multiple elections in one database
+It is possible to run `emlconv` multiple times on multiple election results.
+This is not recommended since all your SQL becomes more complicated because
+you need to separate out which election you are looking at.
+
+To be sure you are not confusing yourself, only load one election at a time,
+and drop or erase the database before loading another election.
 
 # Tables, philosophy
 The idea is that no data is lost in the conversion from EML to SQL. That
