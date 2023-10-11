@@ -562,6 +562,6 @@ from meta where formid='510d' and electionId=?)", {electionId});
   });
 
   int port = argc==1 ? 8081 : atoi(argv[1]);
-  cout<<"Binding to port "<<port<<endl;
+  cout<<"Binding to 0.0.0.0:"<<port<<", try http://127.0.0.1:"<<port<<endl;
   svr.listen("0.0.0.0", port);
 }
