@@ -6,21 +6,34 @@
   </head>
   <body>
     <script src="logic.js"></script>
-
-
-    <div x-data="{ gemeentes: [], gemeenteNaam: '', gemeente: 0, affid: 1, affvotecounts: [],candvotecounts: [], electionID: '', electionName: '' }" x-init="await doStuff($data)">
+<!--
+a = new URL(window.location.href)
+URL {origin: 'http://127.0.0.1:8081', protocol: 'http:', username: '', password: '', host: '127.0.0.1:8081', …}
+a.searchParams.get("gemeente")
+-->
+    <div x-data="{ gemeentes: [], electionID: '', electionName: '' }" x-init="getGemeentesMeta($data)">
       <H1 x-text="electionName"></H1>
       <table>
-        <tr><th>Gemeente</th><th>Kieskring</th><th>Opkomst</th><th>Bij volmacht</th><th>Kiespas</th><th>Blanco</th><th>Ongeldig</th></tr>
+        <tr>
+          <th @click="gemeentes.sort((a,b) => a.gemeente.localeCompare(b.gemeente));">Gemeente</th>
+          <th @click="gemeentes.sort((a,b) => a.kieskring.localeCompare(b.kieskring));">Kieskring</th>
+          <th @click="gemeentes.sort((a,b) => a.opkomst - b.opkomst);">Opkomst</th>
+          <th @click="gemeentes.sort((a,b) => a.volmachtperc - b.volmachtperc);">Bij volmacht</th>
+          <th @click="gemeentes.sort((a,b) => a.kiespasperc - b.kiespasperc);">Kiespas</th>
+          <th @click="gemeentes.sort((a,b) => a.blancoperc - b.blancoperc);">Blanco</th>
+          <th @click="gemeentes.sort((a,b) => a.ongeldigperc - b.ongeldigperc);">Ongeldig</th>
+          <th @click="gemeentes.sort((a,b) => a.toegelaten - b.toegelaten);">Toegelaten</th>
+        </tr>
         <template x-for="g in gemeentes">
           <tr>
-            <td x-text="g.gemeente"></td>
+            <td><a x-bind:href="'overzicht-gemeente.html?gemeente='+g.gemeenteId"><span x-text="g.gemeente"></span></a></td>
             <td x-text="g.kieskring"></td>
             <td x-text="g.opkomst+'%'"></td>
             <td x-text="g.volmachtperc+'%'"></td>
             <td x-text="g.kiespasperc+'%'"></td>
             <td x-text="g.blancoperc+'%'"></td>
             <td x-text="g.ongeldigperc+'%'"></td>
+            <td x-text="g.toegelaten"></td>
             
           </tr>
         </template>

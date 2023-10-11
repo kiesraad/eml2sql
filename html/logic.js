@@ -90,22 +90,45 @@ function fetchCandidates(f)
     });
 }
 
+function getGemeentesMeta(f)
+{
+    fetch('elections').then(response => response.json()).then(data => {
+        f.electionID=data[0].id;
+        f.electionName=data[0].name;
+
+        fetch("gemeentes-meta/"+f.electionID).then(response => response.json()).then(
+            data => { f.gemeentes=data;
+                      f.gemeentes.sort((a,b) => a.gemeente.localeCompare(b.gemeente));
+                    }
+        );
+    });
+}
+
 async function doStuff(f)
 {
     return await fetch('elections').then(response => response.json()).then(data => {
         f.electionID=data[0].id;
         f.electionName=data[0].name;
-        fetch("gemeentes/"+f.electionID).then(response => response.json()).then(
-            data => { f.gemeentes=data;
-                      f.gemeentes.sort((a,b) => a.gemeente.localeCompare(b.gemeente));
-                      if(f.gemeente == -1)
-                          f.gemeente=data[0].gemeenteId;
-                      console.log("Set gemeenteId to "+f.gemeente);
-                      fetchGemeente(f);
-                      fetchGemeenteCands(f);
-                      fetchStembureaus(f);
-                    }
-        );
+
+        fetch('kieskringen/'+f.electionID)
+            .then(response => response.json())
+            .then(data => {f.kieskringen=data; console.log(data);});
+       
+        a = new URL(window.location.href)
+        console.log("hiero");
+        getGemeentesMeta(f);
+        if(a.searchParams.has("gemeente") && a.searchParams.has("stembureau")) {
+            console.log("Hebbes!");
+            f.gemeente=a.searchParams.get("gemeente");
+            f.stembureau=a.searchParams.get("stembureau");
+            fetchStembureau(f); fetchStembureauCands(f); fetchStembureauMeta(f);
+        }
+        else {
+
+            fetch("totaaltelling-aff/"+f.electionID).then(r => r.json()).then(d => { f.affvotecounts = d; console.log(d);})
+            fetch("totaaltelling-affcand/"+f.electionID+"/"+f.affid).then(r => r.json()).then(d => { f.candvotecounts = d; console.log(d);})
+            fetchMeta(f);
+        }
     });
 
 }
@@ -142,5 +165,43 @@ function fetchStembureauCands(f)
         .then(response => response.json())
         .then(data => f.candvotecounts=data);
 }
+
+function fetchStembureauMeta(f)
+{
+    fetch("rawsb-meta/"+f.electionID+"/"+f.gemeente+"/"+f.stembureau)
+        .then(response => response.json())
+        .then(data => {console.log(data); f.rawmeta=data; });
+}
+
+function fetchGemeenteStembureauMeta(f)
+{
+    a = new URL(window.location.href)
+    f.gemeente=a.searchParams.get("gemeente")
+
+    fetch('elections').then(response => response.json()).then(data => {
+        f.electionID=data[0].id;
+        f.electionName=data[0].name;
+        
+        fetch("gemeente-sbmeta/"+f.electionID+"/"+f.gemeente)
+            .then(response => response.json())
+            .then(data => {console.log(data); f.stembureaus=data; f.gemeenteNaam = data[0].gemeente});
+    });
+}
+
+
+function fetchGemeenteMeta(f)
+{
+    fetch("rawgemeente-meta/"+f.electionID+"/"+f.gemeente)
+        .then(response => response.json())
+        .then(data => {console.log(data); f.rawmeta=data; });
+}
+
+function fetchMeta(f)
+{
+    fetch("raw-meta/"+f.electionID)
+        .then(response => response.json())
+        .then(data => {console.log(data); f.rawmeta=data; });
+}
+
 
 

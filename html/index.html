@@ -8,17 +8,27 @@
     <script src="logic.js"></script>
 
 
-    <div x-data="{ gemeentes: [], stembureaus: [], stembureau: -1, stembureauNaam: '', gemeenteNaam: '', gemeente: -1, affid: 1, affvotecounts: [],candvotecounts: [], electionID: '', electionName: '' }" x-init="await doStuff($data)">
+    <div x-data="{ kieskringen: [], kieskringNaam: '', 
+                 gemeentes: [], stembureaus: [], stembureau: -1, stembureauNaam: '', gemeenteNaam: '', gemeente: -1, affid: 1, affvotecounts: [],candvotecounts: [], electionID: '', electionName: '', rawmeta: {} }" x-init="await doStuff($data)">
       <H1 x-text="electionName"></H1>
+
+      <select x-model="kieskringNaam" @change="kieskring=$el[$el.selectedIndex].id; gemeente=-1; gemeenteNaam='-' ;stembureau=-1; stembureauNaam='-';">
+        <option id="-1">Alle kieskringen</option>
+        <template x-for="k in kieskringen">
+          <option x-text="k.kieskringName" x-bind:id="k.kieskringId"></option>
+        </template>
+      </select>
       
-        <select x-model="gemeenteNaam" @change="gemeente=$el[$el.selectedIndex].id; stembureau=-1; stembureauNaam='Gemeente'; fetchStembureaus($data); fetchGemeente($data); fetchGemeenteCands($data);">
+      
+      <select x-model="gemeenteNaam" @change="gemeente=$el[$el.selectedIndex].id; stembureau=-1; stembureauNaam='Gemeente'; if(gemeente > 0) {  fetchStembureaus($data); fetchGemeente($data); fetchGemeenteCands($data); fetchGemeenteMeta($data);} else doStuff($data); ">
+        <option id="-1">Totaal gemeentes</option>
           <template x-for="g in gemeentes">
             <option x-text="g.gemeente" x-bind:id="g.gemeenteId"></option>
           </template>
         </select>
 
-        <select x-model="stembureauNaam" @change="stembureau=$el[$el.selectedIndex].id; if(stembureau > 0) { fetchStembureau($data); fetchStembureauCands($data);} else { fetchGemeente($data); fetchGemeenteCands($data); } ">
-          <option id="-1">Gemeente</option>
+        <select x-model="stembureauNaam" @change="stembureau=$el[$el.selectedIndex].id; if(stembureau > 0) { fetchStembureau($data); fetchStembureauCands($data); fetchStembureauMeta($data);} else { fetchGemeente($data); fetchGemeenteCands($data); fetchGemeenteMeta($data); } ">
+          <option id="-1">Totaal stembureaus</option>
           <template x-for="sb in stembureaus">
             <option x-text="sb.name + ' ('+sb.id+')'" x-bind:id="sb.id"></option>
           </template>
@@ -58,7 +68,49 @@
               </template>
             </table>
 
-        </td></tr>
+          </td>
+          <td valign="top">
+            <table>
+              <tr>
+                <td>Stemgerechtigden</td>   <td align="right" x-text="rawmeta['totalballots']"></td> 
+              </tr>
+
+              <tr> <td>Geteld</td>   <td align="right" x-text="rawmeta['totalcounted']"></td>
+                <td align="right" x-text="(100.0*rawmeta['totalcounted']/rawmeta['totalballots']).toFixed(1)+'%'"></td>
+              </tr>
+              
+              <tr>
+                <td>Geldige stempassen</td>   <td align="right" x-text="rawmeta['geldige stempassen']"></td> 
+                <td align="right" x-text="(100.0*rawmeta['geldige stempassen']/rawmeta['toegelaten kiezers']).toFixed(1)+'%'"></td>
+              </tr>
+              
+              <tr>
+                <td>Geldige volmachtbewijzen</td>   <td align="right" x-text="rawmeta['geldige volmachtbewijzen']"></td>
+                <td align="right" x-text="(100.0*rawmeta['geldige volmachtbewijzen']/rawmeta['toegelaten kiezers']).toFixed(1)+'%'"></td>
+              </tr>
+              <tr>
+                <td>Geldige kiezerspassen</td>   <td align="right" x-text="rawmeta['geldige kiezerspassen']"></td>
+                <td align="right" x-text="(100.0*rawmeta['geldige kiezerspassen']/rawmeta['toegelaten kiezers']).toFixed(1)+'%'"></td>
+              </tr>
+              <tr>
+                <td>Toegelaten kiezers</td>   <td align="right" x-text="rawmeta['toegelaten kiezers']"></td> 
+              </tr>
+
+              <tr>
+                <td>Ongeldig</td>   <td align="right" x-text="rawmeta['ongeldig']"></td>
+                <td align="right" x-text="(100.0*rawmeta['ongeldig']/rawmeta['totalcounted']).toFixed(1)+'%'"></td>
+              </tr>
+              <tr>
+                <td>Blanco</td>   <td align="right" x-text="rawmeta['blanco']"></td>
+                <td align="right" x-text="(100.0*rawmeta['blanco']/rawmeta['totalcounted']).toFixed(1)+'%'"></td>
+              </tr>
+
+        </tr>
+        
+            </table>
+          </td>
+
+        </tr>
       </table>
 <!--
 

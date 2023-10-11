@@ -131,8 +131,10 @@ output:
  * gsbscript
 
 
+# Documents, third party links
 
-# Documents
-
+ * [Electiontool](https://github.com/kroncrv/electiontool), an
+   earlier project by Hay Kranen, which does something similar, but then
+   converts directly to CSV.
  * [Dutch EML specification](https://www.kiesraad.nl/binaries/kiesraad/documenten/formulieren/2016/osv/eml-bestanden/specificatiedocument-eml_nl-versie-1.0a/specificatiedocument-eml-nl-1.0.a.pdf)
 

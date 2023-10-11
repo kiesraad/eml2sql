@@ -20,6 +20,23 @@ string packResults(const vector<unordered_map<string,string>>& result)
 }
                   
 
+auto pivot(const vector<unordered_map<string,string>>& result)
+{
+  nlohmann::json j;
+  for(const auto& r : result) {
+    map<string,string> kp;
+    for(const auto& c : r) {
+      kp.insert(c);
+    }
+    
+    string valname;
+    string kind = kp["kind"];
+    string value = kp["value"];
+    j[kind]=atoi(value.c_str());
+  }
+  return j;
+}
+
 int main(int argc, char**argv)
 {
   SQLiteWriter sqw("eml.sqlite");
@@ -40,7 +57,7 @@ int main(int argc, char**argv)
   };
   LockedSqw lsqw{sqw, sqwlock};
 
-  svr.Get(R"(/elections/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+  svr.Get(R"(/elections/?)", [&lsqw](const httplib::Request &, httplib::Response &res) {
     try {
       auto result = lsqw.query("select * from election", {});
       res.set_content(packResults(result), "application/json");
@@ -50,9 +67,62 @@ int main(int argc, char**argv)
     }
   });
 
+  svr.Get(R"(/rawsb-meta/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string gemeenteIdstr = req.matches[2];
+      string sbIdstr = req.matches[3];
+      int gemeenteId = atoi(gemeenteIdstr.c_str());
+      int stembureau = atoi(sbIdstr.c_str());
+
+      auto result = lsqw.query("select * from rumeta where gemeenteId = ? and stembureauId = ? and electionId = ?",
+                            {gemeenteId, stembureau, electionId});
+
+      nlohmann::json j = pivot(result);
+      res.set_content(j.dump(), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  svr.Get(R"(/rawgemeente-meta/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string gemeenteIdstr = req.matches[2];
+      int gemeenteId = atoi(gemeenteIdstr.c_str());
+
+      auto result = lsqw.query("select * from meta where gemeenteId = ? and electionId = ?",
+                            {gemeenteId, electionId});
+
+      nlohmann::json j = pivot(result);
+      res.set_content(j.dump(), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  svr.Get(R"(/raw-meta/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+
+      auto result = lsqw.query("select * from meta where formid='510d' and electionId = ?",
+                            {electionId});
+
+      res.set_content(pivot(result).dump(), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+
+
+  
   // select gemeenteId,gemeente from affvotecounts where formid='510b' group by 1 order by 1;
 
-  svr.Get(R"(/gemeentes/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+  svr.Get(R"(/gemeentes-meta/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1];
       auto result = lsqw.query(
@@ -61,10 +131,10 @@ round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (whe
 round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalballots'),1) as volmachtperc,  
 round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kind='totalballots'),2) as blancoperc,
 round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalballots'),2) as ongeldigperc,
-round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalballots'),2) as kiespasperc    
+round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalballots'),2) as kiespasperc,
+sum(value) filter (where kind='toegelaten kiezers') as toegelaten
 from meta where formid='510b' and electionId=? group by 1 order by 1)", {electionId});
-
-
+      
       
       res.set_content(packResults(result), "application/json");
     }
@@ -73,6 +143,105 @@ from meta where formid='510b' and electionId=? group by 1 order by 1)", {electio
     }
   });
 
+
+  
+  svr.Get(R"(/gemeente-meta/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string gemeenteIdstr = req.matches[2];
+      int gemeenteId = atoi(gemeenteIdstr.c_str());
+      auto result = lsqw.query(
+                               R"(select gemeenteId,gemeente, kieskring, 
+round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
+round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalballots'),1) as volmachtperc,  
+round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kind='totalballots'),2) as blancoperc,
+round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalballots'),2) as ongeldigperc,
+round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalballots'),2) as kiespasperc,
+sum(value) filter (where kind='toegelaten kiezers') as toegelaten
+from meta where formid='510b' and electionId=? and gemeenteId=? group by 1 order by 1)", {electionId, gemeenteId});
+      
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+
+  // select * from sbmeta where gemeenteId=547;
+
+  svr.Get(R"(/gemeente-sbmeta/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string gemeenteIdstr = req.matches[2];
+      int gemeenteId = atoi(gemeenteIdstr.c_str());
+
+      auto result = lsqw.query(
+                               R"(select stembureauId, stembureau, postcode, gemeente, gemeenteId,
+round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
+round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalcounted'),1) as volmachtperc,  
+round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kind='totalcounted'),2) as blancoperc,
+round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalcounted'),2) as ongeldigperc,
+round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalcounted'),2) as kiespasperc,
+sum(value) filter (where kind='toegelaten kiezers') as toegelaten,
+sum(value) filter (where kind='blanco') +  
+sum(value) filter (where kind='ongeldig') +
+sum(value) filter (where kind='totalcounted') -
+sum(value) filter (where kind='toegelaten kiezers') as delta
+
+from rumeta where formid='510b' and electionId=? and gemeenteId=? group by stembureauId order by stembureauId)", {electionId, gemeenteId});
+
+      auto angles=lsqw.query(R"(select stembureauId, 
+        degrees(acos(sum(v1.votes*v2.votes)/(sqrt(sum(v1.votes*v1.votes))*sqrt(sum(v2.votes*v2.votes))) )) as degdif
+        from 
+        ruaffvotecounts v1, 
+        (select affid,sum(votes) as votes,gemeenteId from affvotecounts where formid='510b' and electionId=? group by affid,gemeenteId) v2 
+        where 
+        v1.affid=v2.affid and
+        v1.formid='510b' and
+        v1.gemeenteId = v2.gemeenteId 
+        and v1.electionId = ?
+        and v1.gemeenteId = ?
+        group by stembureauId 
+        having degdif > 0
+  order by degdif asc)", {electionId, electionId, gemeenteId});
+
+      map<string, string> degmap;
+      for(auto& a: angles)
+        degmap[a["stembureauId"]]=a["degdif"];
+
+      for(auto& r : result) {
+        r["angle"] = degmap[r["stembureauId"]];
+      }
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  
+  svr.Get(R"(/meta/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      auto result = lsqw.query(
+                               R"(select  
+round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
+round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalcounted'),1) as volmachtperc,  
+round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kind='totalcounted'),2) as blancoperc,
+round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalcounted'),2) as ongeldigperc,
+round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalcounted'),2) as kiespasperc    
+from meta where formid='510d' and electionId=?)", {electionId});
+      
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  
+  
   // 
   
   svr.Get(R"(/stembureaus/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
@@ -194,10 +363,10 @@ from meta where formid='510b' and electionId=? group by 1 order by 1)", {electio
     }
   });
 
-  svr.Get(R"(/totaaltelling/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+  svr.Get(R"(/totaaltelling-aff/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1];
-      auto result = lsqw.query("select affid,votes from affvotecounts where formid='510d' and electionId=?", {electionId});
+      auto result = lsqw.query("select affid, uniaffili.name as name,votes from affvotecounts,uniaffili where uniaffili.id=affvotecounts.affid and formid='510d' and electionId=?", {electionId});
       res.set_content(packResults(result), "application/json");
     }
     catch(exception& e) {
@@ -205,6 +374,21 @@ from meta where formid='510b' and electionId=? group by 1 order by 1)", {electio
     }
   });
 
+
+  svr.Get(R"(/totaaltelling-affcand/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string affIdstr=req.matches[2];
+      int affid= atoi(affIdstr.c_str());
+      auto result = lsqw.query("select *,svotes as votes from escounts where electionId=? and affid=?", {electionId, affid});
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  
   svr.Get(R"(/totaaltellingen/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1];
