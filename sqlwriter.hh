@@ -3,17 +3,10 @@
 #include <vector>
 #include <unordered_map>
 #include <variant>
-
-#ifdef MINGW
-#include "mingw.mutex.h"
-#include "mingw.thread.h"
-#else
 #include <mutex>
 #include <thread>
-#endif
-
 #include <iostream>
-
+#include <map>
 struct sqlite3;
 struct sqlite3_stmt;
 
@@ -23,7 +16,7 @@ public:
   MiniSQLite(std::string_view fname);
   ~MiniSQLite();
   std::vector<std::pair<std::string, std::string>> getSchema(const std::string& table);
-  void addColumn(const std::string& table, std::string_view name, std::string_view type);
+  void addColumn(const std::string& table, std::string_view name, std::string_view type, const std::string& meta=std::string());
   std::vector<std::vector<std::string>> exec(std::string_view query);
   void prepare(const std::string& table, std::string_view str);
   void bindPrep(const std::string& table, int idx, bool value);
@@ -60,11 +53,12 @@ class SQLiteWriter
 {
 
 public:
-  explicit SQLiteWriter(std::string_view fname) : d_db(fname)
+  explicit SQLiteWriter(std::string_view fname, const std::map<std::string,std::string>& meta = std::map<std::string,std::string>() ) : d_db(fname)
   {
     d_db.exec("PRAGMA journal_mode='wal'");
     d_db.begin(); // open the transaction
     d_thread = std::thread(&SQLiteWriter::commitThread, this);
+    d_meta = meta;
   }
   typedef std::variant<double, int32_t, uint32_t, int64_t, std::string> var_t;
   void addValue(const std::initializer_list<std::pair<const char*, var_t>>& values, const std::string& table="data");
@@ -78,10 +72,10 @@ public:
     d_thread.join();
   }
 
-  template<typename T>
-  std::vector<std::unordered_map<std::string,std::string>> queryGen(const std::string& q, const T& values);
-  
-  std::vector<std::unordered_map<std::string,std::string>> query(const std::string& q, const std::initializer_list<var_t>& values);  
+  // This is an odd function for a writer - it allows you to do simple queries & get back result as a vector of maps
+  // note that this function is may very well NOT be coherent with addValue
+  // this function is useful for getting values of counters before logging for example
+  std::vector<std::unordered_map<std::string,std::string>> query(const std::string& q, const std::initializer_list<var_t>& values = std::initializer_list<var_t>());  
 private:
   void commitThread();
   bool d_pleasequit{false};
@@ -90,5 +84,9 @@ private:
   MiniSQLite d_db;
   std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> d_columns;
   std::unordered_map<std::string, std::vector<std::string>> d_lastsig;
+  std::map<std::string, std::string> d_meta;
+
   bool haveColumn(const std::string& table, std::string_view name);
+  template<typename T>
+  std::vector<std::unordered_map<std::string,std::string>> queryGen(const std::string& q, const T& values);
 };
