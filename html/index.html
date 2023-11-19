@@ -9,7 +9,12 @@
 
 
     <div x-data="{ kieskringen: [], kieskringNaam: '', 
-                 gemeentes: [], stembureaus: [], stembureau: -1, stembureauNaam: '', gemeenteNaam: '', gemeente: -1, affid: 1, affvotecounts: [],candvotecounts: [], electionID: '', electionName: '', rawmeta: {} }" x-init="await doStuff($data)">
+                 gemeentes: [], stembureaus: [], stembureau: -1, 
+                 stembureauNaam: '', gemeenteNaam: '', gemeente: -1, 
+                 affid: 1, affvotecounts: [],candvotecounts: [], totalvotes: -1,
+                 electionID: '', electionName: '', rawmeta: {} }"
+         x-init="await doStuff($data)">
+      
       <H1 x-text="electionName"></H1>
 
       <select x-model="kieskringNaam" @change="kieskring=$el[$el.selectedIndex].id; gemeente=-1; gemeenteNaam='-' ;stembureau=-1; stembureauNaam='-';">
@@ -48,6 +53,7 @@
                 <td ><a href="javascript:void(0);"><span x-text="c.affid"></span></a></td>
                 <td x-text="c.name"></td>
                 <td x-text="c.votes"></td>
+                <td x-text="(100.0*c.votes/totalvotes).toFixed(1)+'%'"></td>
               </tr>
             </template>
           </table>
@@ -64,6 +70,7 @@
                   <td x-text="c.woonplaats"></td>
                   <td x-text="c.gender"></td>
                   <td x-text="c.votes"></td>
+                  <td x-text="(100.0*c.votes/totalvotes).toFixed(1)+'%'"></td>
                 </tr>
               </template>
             </table>

@@ -115,17 +115,23 @@ async function doStuff(f)
             .then(data => {f.kieskringen=data; console.log(data);});
        
         a = new URL(window.location.href)
-        console.log("hiero");
         getGemeentesMeta(f);
         if(a.searchParams.has("gemeente") && a.searchParams.has("stembureau")) {
-            console.log("Hebbes!");
             f.gemeente=a.searchParams.get("gemeente");
             f.stembureau=a.searchParams.get("stembureau");
             fetchStembureau(f); fetchStembureauCands(f); fetchStembureauMeta(f);
         }
         else {
-
-            fetch("totaaltelling-aff/"+f.electionID).then(r => r.json()).then(d => { f.affvotecounts = d; console.log(d);})
+            fetch("totaaltelling-aff/"+f.electionID).then(r => r.json()).then(d =>
+                {
+                    f.affvotecounts = d;
+                    var totalvotes=0;
+                    for (const aff of d) {
+                        totalvotes += parseInt(aff.votes);
+                    }
+                    f.totalvotes = totalvotes;
+                    console.log(`Total votes ${totalvotes}`);
+                })
             fetch("totaaltelling-affcand/"+f.electionID+"/"+f.affid).then(r => r.json()).then(d => { f.candvotecounts = d; console.log(d);})
             fetchMeta(f);
         }
@@ -139,7 +145,13 @@ async function fetchGemeente(f)
     return await fetch('elections').then(response => response.json()).then(data => {
         f.electionID=data[0].id;
         f.electionName=data[0].name;
-        fetch("gemeente-affvotecount/"+f.electionID+"/"+f.gemeente).then(response => response.json()).then(data => f.affvotecounts=data);
+        fetch("gemeente-affvotecount/"+f.electionID+"/"+f.gemeente).then(response => response.json()).then(data => {
+            f.affvotecounts=data
+            f.totalvotes=0
+            for (const aff of data) {
+                f.totalvotes += parseInt(aff.votes);
+            }
+        });
     });
 }
 
@@ -156,7 +168,15 @@ function fetchStembureaus(f)
 
 function fetchStembureau(f)
 {
-    fetch("stembureau-affvotecount/"+f.electionID+"/"+f.gemeente+"/"+f.stembureau).then(response => response.json()).then(data => f.affvotecounts=data);
+    fetch("stembureau-affvotecount/"+f.electionID+"/"+f.gemeente+"/"+f.stembureau).then(response => response.json()).then(data =>
+        {
+            f.affvotecounts=data;
+            f.totalvotes=0
+            for (const aff of data) {
+                f.totalvotes += parseInt(aff.votes);
+            }
+            
+        });
 }
 
 function fetchStembureauCands(f)
