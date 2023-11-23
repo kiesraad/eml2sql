@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+    <div x-data="{ stembureaus: [], gemeente: '', gemeenteNaam: '', electionID: '', electionName: '' }" x-init="fetchGemeenteStembureauMeta($data)">
+      <H1 x-text="electionName"></H1>
+      <h2 x-text="gemeenteNaam"></h2>
+      <table>
+        <tr>
+          <th @click="stembureaus.sort((a,b) => a.stembureau.localeCompare(b.stembureau));">Stembureau</th>
+          <th @click="stembureaus.sort((a,b) => a.stembureauId - b.stembureauId);">Nummer</th>
+          <th @click="stembureaus.sort((a,b) => a.opkomst - b.opkomst);">Opkomst</th>
+          <th @click="stembureaus.sort((a,b) => a.volmachtperc - b.volmachtperc);">Bij volmacht</th>
+          <th @click="stembureaus.sort((a,b) => a.kiespasperc - b.kiespasperc);">Kiespas</th>
+          <th @click="stembureaus.sort((a,b) => a.blancoperc - b.blancoperc);">Blanco</th>
+          <th @click="stembureaus.sort((a,b) => a.ongeldigperc - b.ongeldigperc);">Ongeldig</th>
+          <th @click="stembureaus.sort((a,b) => a.toegelaten - b.toegelaten);">Toegelaten</th>          
+          <th @click="stembureaus.sort((a,b) => a.delta - b.delta);">Delta</th>
+          <th @click="stembureaus.sort((a,b) => a.angle - b.angle);">∠</th>
+        </tr>
+        <template x-for="g in stembureaus">
+          <tr>
+            <td><a x-bind:href="'./?stembureau='+g.stembureauId+'&gemeente='+g.gemeenteId"><span x-text="g.stembureau.replace(/Stembureau /g, '')"> </span></a></td>
+            <td x-text="g.stembureauId"></td>
+            <td x-text="g.opkomst+'%'"></td>
+            <td x-text="g.volmachtperc+'%'"></td>
+            <td x-text="g.kiespasperc+'%'"></td>
+            <td x-text="g.blancoperc+'%'"></td>
+            <td x-text="g.ongeldigperc+'%'"></td>
+            <td x-text="g.toegelaten"></td>
+            <td x-text="g.delta"></td>
+            <td x-text="parseFloat(g.angle).toFixed(1)"></td>
+          </tr>
+        </template>
+      </table>
+    </div>
+  </body>
+</html>
+    
