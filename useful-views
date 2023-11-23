@@ -116,3 +116,6 @@ CREATE INDEX elindex on election(id);
 CREATE INDEX ruelindx on rucandvotecounts(electionId, formid);
 CREATE INDEX formidx on candvotecounts(electionId,formid,shortcode);
 CREATE INDEX ruformidx on rucandvotecounts(electionId,formid,shortcode);
+
+CREATE VIEW unicands as select affid,firstname,initials,prefix,lastname,gender,woonplaats,group_concat(kieskringId),group_concat(id) from candentries group by 1,5,4,3,2,5,6
+/* unicands(affid,firstname,initials,prefix,lastname,gender,woonplaats,"group_concat(kieskringId)","group_concat(id)") */;
