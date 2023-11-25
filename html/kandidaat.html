@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+    
+    <div x-data="{ steden: [], 
+                 electionID: '', initials: '', 
+                 firstname: '', prefix: '', lastname: '', woonplaats: '', gender:'',
+                 electionName: ''}" x-init="getKandidaatSteden($data)">
+      <H1 x-text="electionName"></H1>
+      <h2 x-text="firstname +' ('+initials+') '+prefix+' ' + lastname + ' ('+woonplaats+')'"></h2>
+      <table>
+        <tr>
+          <th @click="steden.sort((a,b) => a.gemeente.localeCompare(b.gemeente));">Gemeente</th>
+          <th @click="steden.sort((a,b) => b.votes - a.votes);">Stemmen</th>
+          <th @click="steden.sort((a,b) => b.perc - a.perc);">%</th>
+        </tr>
+        <template x-for="g in steden">
+          <tr>
+            <td x-text="g.gemeente"></td>
+            <td x-text="g.votes"></td>
+            <td x-text="g.perc"></td>
+          </tr>
+        </template>
+      </table>
+    </div>
+  </body>
+</html>
+    

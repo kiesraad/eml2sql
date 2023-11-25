@@ -1,0 +1,51 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+    
+    <div x-data="{ kandidaten: [], 
+                 electionID: '', 
+                 electionName: '',
+                 filter: -1,
+                 get filteredItems() {
+                 return this.kandidaten.filter(i => {if(this.filter<0) return true ; else return i.affid== this.filter})
+                     }}" x-init="getKandidatenMeta($data)">
+      <H1 x-text="electionName"></H1>
+      <a href="javascript:;" @click="filter=-1">Alle partijen</a>
+
+      <table>
+        <tr>
+          <th>Voornaam</th>
+          <th>Initialen</th>
+          <th>Tussenvoegsel</th>
+          <th>Achternaam</th>
+          
+          <th>Partij</th>
+          <th>Gem. positie</th>
+          <th>m/v/x/?</th>
+          <th>Woonplaats</th>
+          <th>Stemmen</th>
+        </tr>
+        <template x-for="g in filteredItems">
+          <tr>
+            <td x-text="g.firstname"></td>
+            <td x-text="g.initials"></td>
+            <td x-text="g.prefix"></td>
+            <td><a x-bind:href="'kandidaat.html?kand='+g.candkey" x-text="g.lastname"></a></td>
+            <td><a href="javascript:;" @click="filter = g.affid" x-text="g.name"></a></td>
+            <td x-text="g.avgpos"></td>
+            
+            <td x-text="g.gender"></td>
+            <td x-text="g.woonplaats"></td>
+            <td x-text="g.svotes"></td>            
+          </tr>
+        </template>
+      </table>
+    </div>
+  </body>
+</html>
+    

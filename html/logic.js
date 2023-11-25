@@ -102,7 +102,46 @@ function getGemeentesMeta(f)
                     }
         );
     });
+
+    
+    
 }
+
+function getKandidatenMeta(f)
+{
+    fetch('elections').then(response => response.json()).then(data => {
+        f.electionID=data[0].id;
+        f.electionName=data[0].name;
+
+        fetch("candidates/"+f.electionID).then(response => response.json()).then(
+            data => { f.kandidaten=data;
+                    }
+        );
+    });
+}
+
+function getKandidaatSteden(f)
+{
+    fetch('elections').then(response => response.json()).then(data => {
+        f.electionID=data[0].id;
+        f.electionName=data[0].name;
+        a = new URL(window.location.href)
+        kand = a.searchParams.get("kand")
+        console.log(kand)
+        const obj = JSON.parse(kand);
+        fetch("candidate-municipalities/"+f.electionID+"/"+obj[0]+"/"+obj[1]+"/"+obj[2]).then(response => response.json()).then(
+            data => { f.steden=data.rows;
+                      f.firstname = data.firstname;
+                      f.lastname = data.lastname;
+                      f.initials = data.initials;
+                      f.woonplaats = data.woonplaats;
+                      f.prefix = data.prefix;
+                    }
+        );
+    });
+}
+
+
 
 async function doStuff(f)
 {

@@ -1,12 +1,12 @@
 #include "httplib.h"
 #include "sqlwriter.hh"
-#include "json.hpp"
+#include "nlohmann/json.hpp"
 #include <iostream>
 #include <mutex>
-
+#include "ext/argparse.hpp" 
 using namespace std;
 
-string packResults(const vector<unordered_map<string,string>>& result)
+nlohmann::json packResultsRaw(const vector<unordered_map<string,string>>& result)
 {
   nlohmann::json arr = nlohmann::json::array();
   
@@ -16,9 +16,13 @@ string packResults(const vector<unordered_map<string,string>>& result)
       j[c.first]=c.second;
     arr += j;
   }
-  return arr.dump();
+  return arr;
 }
-                  
+
+string packResults(const vector<unordered_map<string,string>>& result)
+{
+  return packResultsRaw(result).dump();
+}
 
 auto pivot(const vector<unordered_map<string,string>>& result)
 {
@@ -39,7 +43,24 @@ auto pivot(const vector<unordered_map<string,string>>& result)
 
 int main(int argc, char**argv)
 {
-  SQLiteWriter sqw("eml.sqlite");
+  argparse::ArgumentParser program("tensor-convo-par");
+
+  program.add_argument("db-dir").help("directory to read database from").default_value("./");
+  program.add_argument("-p", "--port").help("port number to listen on").default_value(8082).scan<'i', int>();
+  
+  try {
+    program.parse_args(argc, argv);
+  }
+  catch (const std::runtime_error& err) {
+    std::cerr << err.what() << std::endl;
+    std::cerr << program;
+    std::exit(1);
+  }
+  
+  cout<<"db-dir: "<<program.get<string>("db-dir") << endl;
+
+  
+  SQLiteWriter sqw(program.get<string>("db-dir")+"/eml.sqlite");
   std::mutex sqwlock;
   // HTTP
   httplib::Server svr;
@@ -275,6 +296,40 @@ from meta where formid='510d' and electionId=?)", {electionId});
     }
   });
 
+    svr.Get(R"(/candidate-municipalities/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+      try {
+        string electionId=req.matches[1];
+        string kieskringId=req.matches[2];
+        string affid=req.matches[3];
+        string candid=req.matches[4];
+        cout<<"kieskringId "<<kieskringId << " affid " << affid <<" candid " << candid<<endl;
+        //      res.set_content("");
+        auto result =lsqw.query("select * from candentries where electionId=? and kieskringId=? and affid=? and id=?",
+                                {electionId, kieskringId, affid, candid});
+        cout<<__LINE__<<endl;
+        if(!result.empty()) {
+          cout<<result[0]["lastname"]<<endl;
+
+          auto res2=lsqw.query(R"(select votes,cc.gemeente,cc.gemeenteId, value as totvotes, round(100.0*votes/value,3) as perc from candvotecounts cc, candentries ce, meta where cc.formid='510b' and cc.formid=meta.formid and cc.kieskringId=ce.kieskringId and cc.electionId = ce.electionId and ce.electionId = meta.electionId and cc.gemeenteId = meta.gemeenteId and kind='totalcounted' and cc.affid = ce.affid and cc.candid=ce.id and ce.electionId=? and lastname=? and firstname=? and cc.affid=? order by perc desc)", {electionId, result[0]["lastname"], result[0]["firstname"], affid});
+
+          auto rows = packResultsRaw(res2);
+          nlohmann::json ret;
+          for(const auto& s : {"lastname", "firstname", "prefix", "gender", "woonplaats", "initials"})
+            ret[s]=result[0][s];
+          ret["rows"]=rows;
+          res.set_content(ret.dump(), "application/json");
+        }
+        else {
+          cout<<"No hits "<<endl;
+        }
+      }
+      catch(exception& e) {
+        cerr<<"Error: "<<e.what()<<endl;
+      }
+        
+    });
+
+    
     //                                     elect gemee  sb    affid
     svr.Get(R"(/stembureau-candvotecount/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
@@ -363,6 +418,19 @@ from meta where formid='510d' and electionId=?)", {electionId});
     }
   });
 
+  svr.Get(R"(/candidates/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1]; // we ignore this now
+      auto result = lsqw.query(R"(select sum(votes) as svotes,round(avg(candid),2) as avgpos,name,initials,firstname,prefix,lastname,woonplaats,gender,candentries.affid,min(printf("[%d,%d,%d]",candentries.kieskringId,candentries.affid,candentries.id)) as candkey from candvotecounts,candentries,uniaffili where candvotecounts.affid=candentries.affid and candvotecounts.kieskringId = candentries.kieskringId and candentries.id = candvotecounts.candid and uniaffili.id=candentries.affid group by 3,4,5,6,7,8,9 order by 1 desc)", {});
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  
+  
   svr.Get(R"(/totaaltelling-aff/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1];
@@ -561,7 +629,7 @@ from meta where formid='510d' and electionId=?)", {electionId});
     }
   });
 
-  int port = argc==1 ? 8081 : atoi(argv[1]);
+  int port = program.get<int>("port");
   cout<<"Binding to 0.0.0.0:"<<port<<", try http://127.0.0.1:"<<port<<endl;
   svr.listen("0.0.0.0", port);
 }
