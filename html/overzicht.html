@@ -6,13 +6,14 @@
   </head>
   <body>
     <script src="logic.js"></script>
-<!--
-a = new URL(window.location.href)
-URL {origin: 'http://127.0.0.1:8081', protocol: 'http:', username: '', password: '', host: '127.0.0.1:8081', …}
-a.searchParams.get("gemeente")
--->
     <div x-data="{ gemeentes: [], electionID: '', electionName: '' }" x-init="getGemeentesMeta($data)">
       <H1 x-text="electionName"></H1>
+      <p>
+      <span x-text="gemeentes.length"></span> gemeentes en openbare
+      lichamen, <span
+      x-text="gemeentes.reduce((a,b)=>a + parseInt(b.toegelaten), 0)"></span>
+      toegelaten.
+      </p>
       <table>
         <tr>
           <th @click="gemeentes.sort((a,b) => a.gemeente.localeCompare(b.gemeente));">Gemeente</th>
