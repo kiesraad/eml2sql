@@ -457,6 +457,17 @@ Regio,RegioCode,OuderRegioCode
       int gemeenteId=-1;
       int kieskringId=-1;
       string subcategory, category;
+
+      if(auto node = doc.child("EML").child("ManagingAuthority").child("AuthorityIdentifier")) {
+        if(auto node2 = doc.child("EML").child("kr:CreationDateTime")) {
+          sqw.addValue({{"formid", formid}, {"authority", node.begin()->value()}, {"creationdate", node2.begin()->value()}}, "formmeta");
+        }
+        else
+          cout<<"No kr:CreationDateTime"<<endl;
+      }
+      else
+        cout<<"No managing auth"<<endl;
+
       if(formid=="510d") {
         // nothing to set
         // need to detect of this is PS1 or PS2!
