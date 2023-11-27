@@ -3,8 +3,16 @@
 #include <vector>
 #include <unordered_map>
 #include <variant>
+
+#ifdef MINGW
+#include "mingw.mutex.h"
+#include "mingw.thread.h"
+#else
 #include <mutex>
 #include <thread>
+#endif
+
+
 #include <iostream>
 #include <map>
 struct sqlite3;
