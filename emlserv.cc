@@ -421,7 +421,7 @@ from meta where formid='510d' and electionId=?)", {electionId});
   svr.Get(R"(/candidates/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
       string electionId=req.matches[1]; // we ignore this now
-      auto result = lsqw.query(R"(select sum(votes) as svotes,round(avg(candid),2) as avgpos,name,initials,firstname,prefix,lastname,woonplaats,gender,candentries.affid,min(printf("[%d,%d,%d]",candentries.kieskringId,candentries.affid,candentries.id)) as candkey from candvotecounts,candentries,uniaffili where candvotecounts.affid=candentries.affid and candvotecounts.kieskringId = candentries.kieskringId and candentries.id = candvotecounts.candid and uniaffili.id=candentries.affid and formid='510b' group by 3,4,5,6,7,8,9 order by 1 desc)", {});
+      auto result = lsqw.query(R"(select sum(votes) as svotes,round(avg(candid),2) as avgpos,name,initials,firstname,prefix,lastname,woonplaats,gender,candentries.affid,min(printf("[%d,%d,%d]",candentries.kieskringId,candentries.affid,candentries.id)) as candkey from candvotecounts,candentries,uniaffili where candvotecounts.affid=candentries.affid and candvotecounts.kieskringId = candentries.kieskringId and candentries.id = candvotecounts.candid and uniaffili.id=candentries.affid and formid='510b' group by 3,4,5,6,7,8,9,10 order by 1 desc)", {});
       res.set_content(packResults(result), "application/json");
     }
     catch(exception& e) {
