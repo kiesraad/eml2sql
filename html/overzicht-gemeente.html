@@ -24,7 +24,7 @@
         </tr>
         <template x-for="g in stembureaus">
           <tr>
-            <td><a x-bind:href="'./?stembureau='+g.stembureauId+'&gemeente='+g.gemeenteId"><span x-text="g.stembureau.replace(/Stembureau /g, '')"> </span></a></td>
+            <td><a x-bind:href="'./tellingen.html?stembureau='+g.stembureauId+'&gemeente='+g.gemeenteId"><span x-text="g.stembureau.replace(/Stembureau /g, '')"> </span></a></td>
             <td x-text="g.stembureauId"></td>
             <td x-text="g.opkomst+'%'"></td>
             <td x-text="g.volmachtperc+'%'"></td>
