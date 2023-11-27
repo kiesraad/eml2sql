@@ -13,7 +13,7 @@
                  stembureauNaam: '', gemeenteNaam: '', gemeente: -1, 
                  affid: 1, affvotecounts: [],candvotecounts: [], totalvotes: -1,
                  electionID: '', electionName: '', rawmeta: {} }"
-         x-init="await doStuff($data)">
+         x-init="await doTellingen($data)">
       
       <H1 x-text="electionName"></H1>
 
@@ -25,7 +25,7 @@
       </select>
       
       
-      <select x-model="gemeenteNaam" @change="gemeente=$el[$el.selectedIndex].id; stembureau=-1; stembureauNaam='Gemeente'; if(gemeente > 0) {  fetchStembureaus($data); fetchGemeente($data); fetchGemeenteCands($data); fetchGemeenteMeta($data);} else doStuff($data); ">
+      <select x-model="gemeenteNaam" @change="gemeente=$el[$el.selectedIndex].id; stembureau=-1; stembureauNaam='Gemeente'; if(gemeente > 0) {  fetchStembureaus($data); fetchGemeente($data); fetchGemeenteCands($data); fetchGemeenteMeta($data);} else doTellingen($data); ">
         <option id="-1">Totaal gemeentes</option>
           <template x-for="g in gemeentes">
             <option x-text="g.gemeente" x-bind:id="g.gemeenteId"></option>

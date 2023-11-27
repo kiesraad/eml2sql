@@ -143,7 +143,7 @@ function getKandidaatSteden(f)
 
 
 
-async function doStuff(f)
+async function doTellingen(f)
 {
     return await fetch('elections').then(response => response.json()).then(data => {
         f.electionID=data[0].id;
@@ -153,10 +153,15 @@ async function doStuff(f)
             .then(response => response.json())
             .then(data => {f.kieskringen=data; console.log(data);});
        
-        a = new URL(window.location.href)
         getGemeentesMeta(f);
+
+        a = new URL(window.location.href)
+        
         if(a.searchParams.has("gemeente") && a.searchParams.has("stembureau")) {
             f.gemeente=a.searchParams.get("gemeente");
+
+            // this actually works, except selector doesn't listen
+            fetchStembureaus(f);
             f.stembureau=a.searchParams.get("stembureau");
             fetchStembureau(f); fetchStembureauCands(f); fetchStembureauMeta(f);
         }
