@@ -31,3 +31,10 @@
 *.exe
 *.out
 *.app
+
+# compile output
+build
+CMakeFiles
+emlconv
+emlserv
+eml.sqlite*
