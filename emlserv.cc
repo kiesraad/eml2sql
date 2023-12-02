@@ -4,6 +4,7 @@
 #include <iostream>
 #include <mutex>
 #include "ext/argparse.hpp" 
+
 using namespace std;
 
 nlohmann::json packResultsRaw(const vector<unordered_map<string,string>>& result)
@@ -629,6 +630,21 @@ from meta where formid='510d' and electionId=?)", {electionId});
     }
   });
 
+
+  svr.Get(R"(/onverklaard-stembureaus/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string election = req.matches[1];
+      auto result = lsqw.query(R"(select gemeente,stembureauId,stembureau,round(100.0*sum(value) filter (where kind="geen verklaring")/sum(value) filter (where kind='totalcounted'),2) as percgeenverklaring, sum(value) filter (where kind="geen verklaring") as absgeenverklaring, sum(value) filter (where kind="minder getelde stembiljetten") as mindergeteld, sum(value) filter (where kind="meer getelde stembiljetten") as meergeteld, sum(value) filter (where kind="toegelaten kiezers") as toegelaten, sum(value) filter (where kind="meegenomen stembiljetten") as meegenomen, sum(value) filter (where kind="andere verklaring") as andere, sum(value) filter (where kind="te weinig uitgereikte stembiljetten") as teweinig, sum(value) filter (where kind="te veel uitgereikte stembiljetten") as teveel from rumeta where formid='510b' and electionId=? group by 1,2,3 order by absgeenverklaring desc limit 1000)", {election});
+      res.set_content(packResults(result), "application/json");
+
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
+    }
+  });
+
+  
+  
   int port = program.get<int>("port");
   cout<<"Binding to 0.0.0.0:"<<port<<", try http://127.0.0.1:"<<port<<endl;
   svr.listen("0.0.0.0", port);

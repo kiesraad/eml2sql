@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel='stylesheet' href='style.css'>
+    <script defer src="cdn.min.js"></script>
+  </head>
+  <body>
+    <script src="logic.js"></script>
+    <div x-data="{ stembureaus: [], electionID: '', electionName: '' }" x-init="getStembureausOnverklaard($data)">
+      <H1 x-text="electionName"></H1>
+      <table>
+        <tr>
+          <th @click="stembureaus.sort((a,b) => a.gemeente.localeCompare(b.gemeente));">Gemeente</th>
+          <th>StembureauId</th>
+          <th @click="stembureaus.sort((a,b) => a.stembureau.localeCompare(b.stembureau));">Stembureau</th>
+
+          <th @click="stembureaus.sort((a,b) => b.percgeenverklaring - a.percgeenverklaring);">% onverklaard</th>
+          <th @click="stembureaus.sort((a,b) => b.absgeenverklaring - a.absgeenverklaring);">Onverklaard</th>
+          <th @click="stembureaus.sort((a,b) => b.andere - a.andere);">Andere</th>
+          <th @click="stembureaus.sort((a,b) => b.mindergeteld - a.mindergeteld);">Minder</th>
+          <th @click="stembureaus.sort((a,b) => b.meergeteld - a.meergeteld);">Meer</th>
+          <th @click="stembureaus.sort((a,b) => b.teveel - a.teveel);">Teveel</th>
+          <th @click="stembureaus.sort((a,b) => b.teweinig - a.teweinig);">Teweinig</th>
+          <th @click="stembureaus.sort((a,b) => b.meegenomen - a.meegenomen);">Meegenomen</th>
+          <th @click="stembureaus.sort((a,b) => b.toegelaten - a.toegelaten);">Stemmers</th>
+        </tr>
+        <template x-for="g in stembureaus">
+          <tr>
+            <td><a x-bind:href="'overzicht-gemeente.html?gemeente='+g.gemeenteId"><span x-text="g.gemeente"></span></a></td>
+            <td x-text="g.stembureauId"></td>
+            <td x-text="g.stembureau"></td>
+
+            
+            <td x-text="g.percgeenverklaring+'%'"></td>
+            <td x-text="g.absgeenverklaring"></td>
+            <td x-text="g.andere"></td>
+            <td x-text="g.mindergeteld"></td>
+            <td x-text="g.meergeteld"></td>
+            <td x-text="g.teveel"></td>
+            <td x-text="g.teweinig"></td>
+            <td x-text="g.meegenomen"></td>            
+            <td x-text="g.toegelaten"></td>
+          </tr>
+        </template>
+      </table>
+    </div>
+  </body>
+</html>
+    

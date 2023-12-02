@@ -141,6 +141,17 @@ function getKandidaatSteden(f)
     });
 }
 
+function getStembureausOnverklaard(f)
+{
+    fetch('elections').then(response => response.json()).then(data => {
+        f.electionID=data[0].id;
+        f.electionName=data[0].name;
+        fetch("onverklaard-stembureaus/"+f.electionID).then(response => response.json()).then(
+            data => { f.stembureaus= data; }
+        );
+    });
+}
+
 
 
 async function doTellingen(f)
