@@ -59,11 +59,9 @@ int main(int argc, char**argv)
   }
   
   cout<<"db-dir: "<<program.get<string>("db-dir") << endl;
-
   
   SQLiteWriter sqw(program.get<string>("db-dir")+"/eml.sqlite");
   std::mutex sqwlock;
-  // HTTP
   httplib::Server svr;
   svr.set_mount_point("/", "./html/");
 
@@ -75,6 +73,16 @@ int main(int argc, char**argv)
     {
       std::lock_guard<mutex> l(sqwlock);
       return sqw.query(query, values);
+    }
+
+    void queryJ(httplib::Response &res, const std::string& q, const std::initializer_list<SQLiteWriter::var_t>& values) 
+    try
+    {
+      auto result = query(q, values);
+      res.set_content(packResults(result), "application/json");
+    }
+    catch(exception& e) {
+      cerr<<"Error: "<<e.what()<<endl;
     }
   };
   LockedSqw lsqw{sqw, sqwlock};
@@ -206,6 +214,7 @@ round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kin
 round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalcounted'),2) as ongeldigperc,
 round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalcounted'),2) as kiespasperc,
 sum(value) filter (where kind='toegelaten kiezers') as toegelaten,
+sum(value) filter (where kind='geen verklaring') as geenverklaring,
 sum(value) filter (where kind='blanco') +  
 sum(value) filter (where kind='ongeldig') +
 sum(value) filter (where kind='totalcounted') -
@@ -261,58 +270,41 @@ from meta where formid='510d' and electionId=?)", {electionId});
       cerr<<"Error: "<<e.what()<<endl;
     }
   });
-
-  
-  
-  // 
   
   svr.Get(R"(/stembureaus/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      string gemeenteIdstr=req.matches[2];
-      auto result = lsqw.query("select * from stembureaus where gemeenteId=? and electionId=?", {gemeenteIdstr, electionId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    string gemeenteIdstr=req.matches[2];
+    lsqw.queryJ(res, "select * from stembureaus where gemeenteId=? and electionId=?", {gemeenteIdstr, electionId});
   });
 
-  // select * from ruaffvotecounts,affiliations where stembureauId='1980::SB36' and affiliations.id=ruaffvotecounts.affid and affiliations.kieskringId = ruaffvotecounts.kieskringId and affiliations.electionId = ruaffvotecounts.electionId;
-
+  
   //                                     elect gemee  sb
-    svr.Get(R"(/stembureau-affvotecount/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      string gemeenteIdstr=req.matches[2];
-      string stembureauIdstr=req.matches[3];
-      
-      int gemeenteId = atoi(gemeenteIdstr.c_str());
-      int stembureauId=atoi(stembureauIdstr.c_str());
-      auto result = lsqw.query("select * from ruaffvotecounts,affiliations where ruaffvotecounts.electionId=? and gemeenteId=? and stembureauId=? and formid='510b' and ruaffvotecounts.affid=affiliations.id and ruaffvotecounts.kieskringId=affiliations.kieskringId;", {electionId,gemeenteId,stembureauId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+  svr.Get(R"(/stembureau-affvotecount/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    string electionId=req.matches[1];
+    string gemeenteIdstr=req.matches[2];
+    string stembureauIdstr=req.matches[3];
+    
+    int gemeenteId = atoi(gemeenteIdstr.c_str());
+    int stembureauId=atoi(stembureauIdstr.c_str());
+    lsqw.queryJ(res, "select * from ruaffvotecounts,affiliations where ruaffvotecounts.electionId=? and gemeenteId=? and stembureauId=? and formid='510b' and ruaffvotecounts.affid=affiliations.id and ruaffvotecounts.kieskringId=affiliations.kieskringId;", {electionId,gemeenteId,stembureauId});
   });
 
-    svr.Get(R"(/candidate-municipalities/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-      try {
-        string electionId=req.matches[1];
-        string kieskringId=req.matches[2];
-        string affid=req.matches[3];
-        string candid=req.matches[4];
-        cout<<"kieskringId "<<kieskringId << " affid " << affid <<" candid " << candid<<endl;
-        //      res.set_content("");
-        auto result =lsqw.query("select * from candentries where electionId=? and kieskringId=? and affid=? and id=?",
-                                {electionId, kieskringId, affid, candid});
-        cout<<__LINE__<<endl;
-        if(!result.empty()) {
-          cout<<result[0]["lastname"]<<endl;
-
-          auto res2=lsqw.query(R"(select votes,cc.gemeente,cc.gemeenteId, value as totvotes, round(100.0*votes/value,3) as perc from candvotecounts cc, candentries ce, meta where cc.formid='510b' and cc.formid=meta.formid and cc.kieskringId=ce.kieskringId and cc.electionId = ce.electionId and ce.electionId = meta.electionId and cc.gemeenteId = meta.gemeenteId and kind='totalcounted' and cc.affid = ce.affid and cc.candid=ce.id and ce.electionId=? and lastname=? and firstname=? and cc.affid=? order by perc desc)", {electionId, result[0]["lastname"], result[0]["firstname"], affid});
-
+  svr.Get(R"(/candidate-municipalities/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    try {
+      string electionId=req.matches[1];
+      string kieskringId=req.matches[2];
+      string affid=req.matches[3];
+      string candid=req.matches[4];
+      cout<<"kieskringId "<<kieskringId << " affid " << affid <<" candid " << candid<<endl;
+      //      res.set_content("");
+      auto result =lsqw.query("select * from candentries where electionId=? and kieskringId=? and affid=? and id=?",
+                              {electionId, kieskringId, affid, candid});
+      cout<<__LINE__<<endl;
+      if(!result.empty()) {
+        cout<<result[0]["lastname"]<<endl;
+        
+        auto res2=lsqw.query(R"(select votes,cc.gemeente,cc.gemeenteId, value as totvotes, round(100.0*votes/value,3) as perc from candvotecounts cc, candentries ce, meta where cc.formid='510b' and cc.formid=meta.formid and cc.kieskringId=ce.kieskringId and cc.electionId = ce.electionId and ce.electionId = meta.electionId and cc.gemeenteId = meta.gemeenteId and kind='totalcounted' and cc.affid = ce.affid and cc.candid=ce.id and ce.electionId=? and lastname=? and firstname=? and cc.affid=? order by perc desc)", {electionId, result[0]["lastname"], result[0]["firstname"], affid});
+        
           auto rows = packResultsRaw(res2);
           nlohmann::json ret;
           for(const auto& s : {"lastname", "firstname", "prefix", "gender", "woonplaats", "initials"})
@@ -330,10 +322,8 @@ from meta where formid='510d' and electionId=?)", {electionId});
         
     });
 
-    
-    //                                     elect gemee  sb    affid
-    svr.Get(R"(/stembureau-candvotecount/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
+  //                                     elect gemee  sb    affid
+  svr.Get(R"(/stembureau-candvotecount/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
       string electionId=req.matches[1];
       string gemeenteIdstr=req.matches[2];
       string stembureauIdstr=req.matches[3];
@@ -342,119 +332,62 @@ from meta where formid='510d' and electionId=?)", {electionId});
       int gemeenteId = atoi(gemeenteIdstr.c_str());
       int stembureauId=atoi(stembureauIdstr.c_str());
       int affid = atoi(affidStr.c_str());
-      auto result = lsqw.query("select *, svotes as votes, affname as name from sbcounts where electionId=? and gemeenteId=? and stembureauId=? and affid=?", {electionId,gemeenteId,stembureauId, affid});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+      lsqw.queryJ(res, "select *, svotes as votes, affname as name from sbcounts where electionId=? and gemeenteId=? and stembureauId=? and affid=?", {electionId,gemeenteId,stembureauId, affid});
   });
+  
+  svr.Get(R"(/gemeente-affvotecount/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    string electionId=req.matches[1];
+    string gemeenteIdstr=req.matches[2];
     
-    svr.Get(R"(/gemeente-affvotecount/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      string gemeenteIdstr=req.matches[2];
-      
-      int gemeenteId = atoi(gemeenteIdstr.c_str());
-
-      auto result = lsqw.query("select * from affvotecounts,affiliations where affvotecounts.electionId=? and gemeenteId=? and formid='510b' and affvotecounts.affid=affiliations.id and affvotecounts.kieskringId=affiliations.kieskringId", {electionId,gemeenteId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
-  });
-
-
-    svr.Get(R"(/gemeente-candaffvotecount/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      string gemeenteIdstr=req.matches[2];
-      string affIdstr=req.matches[3];
-      
-      int gemeenteId = atoi(gemeenteIdstr.c_str());
-      int affId=atoi(affIdstr.c_str());;
-
-      auto result = lsqw.query("select * from candvotecounts,candentries,affiliations where candvotecounts.electionId=? and gemeenteId=? and candvotecounts.affid=? and formid='510b' and candvotecounts.affid=candentries.affid and candvotecounts.kieskringId=candentries.kieskringId and candentries.id = candvotecounts.candid and candvotecounts.electionId = candentries.electionId and affiliations.id=candentries.affid and affiliations.electionId=candvotecounts.electionId and affiliations.kieskringId=candvotecounts.kieskringId", {electionId,gemeenteId, affId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
-  });
-
-
-
+    int gemeenteId = atoi(gemeenteIdstr.c_str());
     
+    lsqw.queryJ(res, "select * from affvotecounts,affiliations where affvotecounts.electionId=? and gemeenteId=? and formid='510b' and affvotecounts.affid=affiliations.id and affvotecounts.kieskringId=affiliations.kieskringId", {electionId,gemeenteId});
+  });
+  
+  
+  svr.Get(R"(/gemeente-candaffvotecount/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
+    string electionId=req.matches[1];
+    string gemeenteIdstr=req.matches[2];
+    string affIdstr=req.matches[3];
+    
+    int gemeenteId = atoi(gemeenteIdstr.c_str());
+    int affId=atoi(affIdstr.c_str());;
+    
+    lsqw.queryJ(res, "select * from candvotecounts,candentries,affiliations where candvotecounts.electionId=? and gemeenteId=? and candvotecounts.affid=? and formid='510b' and candvotecounts.affid=candentries.affid and candvotecounts.kieskringId=candentries.kieskringId and candentries.id = candvotecounts.candid and candvotecounts.electionId = candentries.electionId and affiliations.id=candentries.affid and affiliations.electionId=candvotecounts.electionId and affiliations.kieskringId=candvotecounts.kieskringId", {electionId,gemeenteId, affId});
+  });
+  
   svr.Get(R"(/kieskringen/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query("select kieskringId,kieskringName,kieskringHSB,electionId from candentries where electionId=? group by 1", {electionId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    lsqw.queryJ(res, "select kieskringId,kieskringName,kieskringHSB,electionId from candentries where electionId=? group by 1", {electionId});
   });
-
+  
   svr.Get(R"(/gemeentes/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query("select kieskringId,kieskring,kieskringHSB,electionId,gemeente,gemeenteId from meta where gemeente!='' and electionId=? group by gemeenteId", {electionId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    lsqw.queryJ(res,"select kieskringId,kieskring,kieskringHSB,electionId,gemeente,gemeenteId from meta where gemeente!='' and electionId=? group by gemeenteId", {electionId});
   });
 
   svr.Get(R"(/affiliations/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query("select id,kieskringId,kieskringName,electionId,name from affiliations where electionId=?", {electionId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    lsqw.queryJ(res, "select id,kieskringId,kieskringName,electionId,name from affiliations where electionId=?", {electionId});
   });
 
   svr.Get(R"(/candidates/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1]; // we ignore this now
-      auto result = lsqw.query(R"(select sum(votes) as svotes,round(avg(candid),2) as avgpos,name,initials,firstname,prefix,lastname,woonplaats,gender,candentries.affid,min(printf("[%d,%d,%d]",candentries.kieskringId,candentries.affid,candentries.id)) as candkey from candvotecounts,candentries,uniaffili where candvotecounts.affid=candentries.affid and candvotecounts.kieskringId = candentries.kieskringId and candentries.id = candvotecounts.candid and uniaffili.id=candentries.affid and formid='510b' group by 3,4,5,6,7,8,9,10 order by 1 desc)", {});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1]; // we ignore this now
+    lsqw.queryJ(res, R"(select sum(votes) as svotes,round(avg(candid),2) as avgpos,name,initials,firstname,prefix,lastname,woonplaats,gender,candentries.affid,min(printf("[%d,%d,%d]",candentries.kieskringId,candentries.affid,candentries.id)) as candkey from candvotecounts,candentries,uniaffili where candvotecounts.affid=candentries.affid and candvotecounts.kieskringId = candentries.kieskringId and candentries.id = candvotecounts.candid and uniaffili.id=candentries.affid and formid='510b' group by 3,4,5,6,7,8,9,10 order by 1 desc)", {});
   });
 
-  
-  
+    
   svr.Get(R"(/totaaltelling-aff/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query("select affid, uniaffili.name as name,votes from affvotecounts,uniaffili where uniaffili.id=affvotecounts.affid and formid='510d' and electionId=?", {electionId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    lsqw.queryJ(res, "select affid, uniaffili.name as name,votes from affvotecounts,uniaffili where uniaffili.id=affvotecounts.affid and formid='510d' and electionId=?", {electionId});
   });
-
-
+  
+  
   svr.Get(R"(/totaaltelling-affcand/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      string affIdstr=req.matches[2];
-      int affid= atoi(affIdstr.c_str());
-      auto result = lsqw.query("select *,svotes as votes from escounts where electionId=? and affid=?", {electionId, affid});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    string affIdstr=req.matches[2];
+    int affid= atoi(affIdstr.c_str());
+    lsqw.queryJ(res, "select *,svotes as votes from escounts where electionId=? and affid=?", {electionId, affid});
   });
 
   
@@ -567,84 +500,44 @@ from meta where formid='510d' and electionId=?)", {electionId});
   
   //select kieskringId,sum(votes) from ruaffvotecounts where formid='510d' and electionId=? group by kieskringId 
   svr.Get(R"(/totaaltelling-per-kieskring/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query("select kieskringId,sum(votes) as svotes from ruaffvotecounts where formid='510d' and electionId=? group by kieskringId", {electionId});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    lsqw.queryJ(res, "select kieskringId,sum(votes) as svotes from ruaffvotecounts where formid='510d' and electionId=? group by kieskringId", {electionId});
   });
   
   svr.Get(R"(/gemeentes/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      int kieskringid = stoi(req.matches[2].str());
-      auto result = lsqw.query("select kieskringId,kieskring,kieskringHSB,electionId,gemeente,gemeenteId from meta where gemeente!='' and electionId=? and kieskringId=? group by gemeenteId", {electionId, kieskringid});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string electionId=req.matches[1];
+    int kieskringid = stoi(req.matches[2].str());
+    lsqw.queryJ(res, "select kieskringId,kieskring,kieskringHSB,electionId,gemeente,gemeenteId from meta where gemeente!='' and electionId=? and kieskringId=? group by gemeenteId", {electionId, kieskringid});
   });
 
   
   svr.Get(R"(/candentries/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string election = req.matches[1];
-      int kieskringid = stoi(req.matches[2].str());
-      auto result = lsqw.query("select * from candentries where electionID=? and kieskringId=?", {election,kieskringid});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string election = req.matches[1];
+    int kieskringid = stoi(req.matches[2].str());
+    lsqw.queryJ(res, "select * from candentries where electionID=? and kieskringId=?", {election,kieskringid});
   });
 
   svr.Get(R"(/candentries/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string election = req.matches[1];
-      int kieskringid = stoi(req.matches[2].str());
-      int affid = stoi(req.matches[3].str());
-      auto result = lsqw.query("select * from candentries where electionID=? and kieskringId=? and affid=?", {election,kieskringid,affid});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string election = req.matches[1];
+    int kieskringid = stoi(req.matches[2].str());
+    int affid = stoi(req.matches[3].str());
+    lsqw.queryJ(res, "select * from candentries where electionID=? and kieskringId=? and affid=?", {election,kieskringid,affid});
   });
 
   svr.Get(R"(/candentries/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string election = req.matches[1];
-      int kieskringid = stoi(req.matches[2].str());
-      int affid = stoi(req.matches[3].str());
-      int candid = stoi(req.matches[4].str());
-      auto result = lsqw.query("select * from candentries where electionID=? and kieskringId=? and affid=? and id=?",
-                               {election,kieskringid,affid,candid});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string election = req.matches[1];
+    int kieskringid = stoi(req.matches[2].str());
+    int affid = stoi(req.matches[3].str());
+    int candid = stoi(req.matches[4].str());
+    lsqw.queryJ(res,"select * from candentries where electionID=? and kieskringId=? and affid=? and id=?",
+                             {election,kieskringid,affid,candid});
   });
-
 
   svr.Get(R"(/onverklaard-stembureaus/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string election = req.matches[1];
-      auto result = lsqw.query(R"(select gemeente,stembureauId,stembureau,round(100.0*sum(value) filter (where kind="geen verklaring")/sum(value) filter (where kind='totalcounted'),2) as percgeenverklaring, sum(value) filter (where kind="geen verklaring") as absgeenverklaring, sum(value) filter (where kind="minder getelde stembiljetten") as mindergeteld, sum(value) filter (where kind="meer getelde stembiljetten") as meergeteld, sum(value) filter (where kind="toegelaten kiezers") as toegelaten, sum(value) filter (where kind="meegenomen stembiljetten") as meegenomen, sum(value) filter (where kind="andere verklaring") as andere, sum(value) filter (where kind="te weinig uitgereikte stembiljetten") as teweinig, sum(value) filter (where kind="te veel uitgereikte stembiljetten") as teveel from rumeta where formid='510b' and electionId=? group by 1,2,3 order by absgeenverklaring desc limit 1000)", {election});
-      res.set_content(packResults(result), "application/json");
-
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    string election = req.matches[1];
+    lsqw.queryJ(res, R"(select gemeente,stembureauId,stembureau,gemeenteId,round(100.0*sum(value) filter (where kind="geen verklaring")/sum(value) filter (where kind='totalcounted'),2) as percgeenverklaring, sum(value) filter (where kind="geen verklaring") as absgeenverklaring, sum(value) filter (where kind="minder getelde stembiljetten") as mindergeteld, sum(value) filter (where kind="meer getelde stembiljetten") as meergeteld, sum(value) filter (where kind="toegelaten kiezers") as toegelaten, sum(value) filter (where kind="meegenomen stembiljetten") as meegenomen, sum(value) filter (where kind="andere verklaring") as andere, sum(value) filter (where kind="te weinig uitgereikte stembiljetten") as teweinig, sum(value) filter (where kind="te veel uitgereikte stembiljetten") as teveel from rumeta where formid='510b' and electionId=? group by 1,2,3 order by absgeenverklaring desc limit 1000)", {election});
   });
-
-  
-  
+    
   int port = program.get<int>("port");
   cout<<"Binding to 0.0.0.0:"<<port<<", try http://127.0.0.1:"<<port<<endl;
   svr.listen("0.0.0.0", port);
