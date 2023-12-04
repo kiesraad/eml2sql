@@ -3,41 +3,24 @@
 #include "nlohmann/json.hpp"
 #include <iostream>
 #include <mutex>
+#include "jsonhelper.hh"
 #include "ext/argparse.hpp" 
 
 using namespace std;
 
-nlohmann::json packResultsRaw(const vector<unordered_map<string,string>>& result)
-{
-  nlohmann::json arr = nlohmann::json::array();
-  
-  for(const auto& r : result) {
-    nlohmann::json j;
-    for(const auto& c : r)
-      j[c.first]=c.second;
-    arr += j;
-  }
-  return arr;
-}
-
-string packResults(const vector<unordered_map<string,string>>& result)
-{
-  return packResultsRaw(result).dump();
-}
-
-auto pivot(const vector<unordered_map<string,string>>& result)
+auto pivot(const vector<unordered_map<string, MiniSQLite::outvar_t>>& result)
 {
   nlohmann::json j;
   for(const auto& r : result) {
-    map<string,string> kp;
+    map<string, MiniSQLite::outvar_t> kp;
     for(const auto& c : r) {
       kp.insert(c);
     }
     
     string valname;
-    string kind = kp["kind"];
-    string value = kp["value"];
-    j[kind]=atoi(value.c_str());
+    string kind = get<string>(kp["kind"]);
+    int64_t value = get<int64_t>(kp["value"]);
+    j[kind]=value;
   }
   return j;
 }
@@ -69,17 +52,17 @@ int main(int argc, char**argv)
   {
     SQLiteWriter& sqw;
     std::mutex& sqwlock;
-    vector<unordered_map<string,string>> query(const std::string& query, const std::initializer_list<SQLiteWriter::var_t>& values)
+    vector<unordered_map<string, MiniSQLite::outvar_t>> query(const std::string& query, const std::initializer_list<SQLiteWriter::var_t>& values)
     {
       std::lock_guard<mutex> l(sqwlock);
-      return sqw.query(query, values);
+      return sqw.queryT(query, values);
     }
 
     void queryJ(httplib::Response &res, const std::string& q, const std::initializer_list<SQLiteWriter::var_t>& values) 
     try
     {
       auto result = query(q, values);
-      res.set_content(packResults(result), "application/json");
+      res.set_content(packResultsJsonStr(result), "application/json");
     }
     catch(exception& e) {
       cerr<<"Error: "<<e.what()<<endl;
@@ -88,13 +71,7 @@ int main(int argc, char**argv)
   LockedSqw lsqw{sqw, sqwlock};
 
   svr.Get(R"(/elections/?)", [&lsqw](const httplib::Request &, httplib::Response &res) {
-    try {
-      auto result = lsqw.query("select * from election", {});
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
+    lsqw.queryJ(res, "select * from election", {});
   });
 
   svr.Get(R"(/rawsb-meta/([^/]*)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
@@ -153,9 +130,8 @@ int main(int argc, char**argv)
   // select gemeenteId,gemeente from affvotecounts where formid='510b' group by 1 order by 1;
 
   svr.Get(R"(/gemeentes-meta/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query(
+    string electionId=req.matches[1];
+    lsqw.queryJ(res,
                                R"(select gemeenteId,gemeente, kieskring, 
 round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
 round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalballots'),1) as volmachtperc,  
@@ -164,23 +140,15 @@ round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where k
 round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalballots'),2) as kiespasperc,
 sum(value) filter (where kind='toegelaten kiezers') as toegelaten
 from meta where formid='510b' and electionId=? group by 1 order by 1)", {electionId});
-      
-      
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
   });
 
 
   
   svr.Get(R"(/gemeente-meta/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      string gemeenteIdstr = req.matches[2];
-      int gemeenteId = atoi(gemeenteIdstr.c_str());
-      auto result = lsqw.query(
+    string electionId=req.matches[1];
+    string gemeenteIdstr = req.matches[2];
+    int gemeenteId = atoi(gemeenteIdstr.c_str());
+    lsqw.queryJ(res,
                                R"(select gemeenteId,gemeente, kieskring, 
 round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
 round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalballots'),1) as volmachtperc,  
@@ -189,12 +157,6 @@ round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where k
 round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalballots'),2) as kiespasperc,
 sum(value) filter (where kind='toegelaten kiezers') as toegelaten
 from meta where formid='510b' and electionId=? and gemeenteId=? group by 1 order by 1)", {electionId, gemeenteId});
-      
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
   });
 
 
@@ -237,14 +199,14 @@ from rumeta where formid='510b' and electionId=? and gemeenteId=? group by stemb
         having degdif > 0
   order by degdif asc)", {electionId, electionId, gemeenteId});
 
-      map<string, string> degmap;
+      map<int, double> degmap;
       for(auto& a: angles)
-        degmap[a["stembureauId"]]=a["degdif"];
+        degmap[get<int64_t>(a["stembureauId"])]=get<double>(a["degdif"]);
 
       for(auto& r : result) {
-        r["angle"] = degmap[r["stembureauId"]];
+        r["angle"] = degmap[get<int64_t>(r["stembureauId"])];
       }
-      res.set_content(packResults(result), "application/json");
+      res.set_content(packResultsJsonStr(result), "application/json");
     }
     catch(exception& e) {
       cerr<<"Error: "<<e.what()<<endl;
@@ -253,9 +215,8 @@ from rumeta where formid='510b' and electionId=? and gemeenteId=? group by stemb
 
   
   svr.Get(R"(/meta/([^/]*)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
-    try {
-      string electionId=req.matches[1];
-      auto result = lsqw.query(
+    string electionId=req.matches[1];
+    lsqw.queryJ(res,
                                R"(select  
 round(100.0*sum(value) filter (where kind='totalcounted')/sum(value) filter (where kind='totalballots'),1) as opkomst, 
 round(100.0*sum(value) filter (where kind='geldige volmachtbewijzen')/sum(value) filter (where kind='totalcounted'),1) as volmachtperc,  
@@ -263,12 +224,6 @@ round(100.0*sum(value) filter (where kind='blanco')/sum(value) filter (where kin
 round(100.0*sum(value) filter (where kind='ongeldig')/sum(value) filter (where kind='totalcounted'),2) as ongeldigperc,
 round(100.0*sum(value) filter (where kind='geldige kiezerspassen')/sum(value) filter (where kind='totalcounted'),2) as kiespasperc    
 from meta where formid='510d' and electionId=?)", {electionId});
-      
-      res.set_content(packResults(result), "application/json");
-    }
-    catch(exception& e) {
-      cerr<<"Error: "<<e.what()<<endl;
-    }
   });
   
   svr.Get(R"(/stembureaus/([^/]*)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
@@ -289,26 +244,24 @@ from meta where formid='510d' and electionId=?)", {electionId});
     lsqw.queryJ(res, "select * from ruaffvotecounts,affiliations where ruaffvotecounts.electionId=? and gemeenteId=? and stembureauId=? and formid='510b' and ruaffvotecounts.affid=affiliations.id and ruaffvotecounts.kieskringId=affiliations.kieskringId;", {electionId,gemeenteId,stembureauId});
   });
 
+  //  expand this one to get all the stembureaus (voting stations) in one municipality
   svr.Get(R"(/candidate-municipalities/([^/]*)/(\d+)/(\d+)/(\d+)/?)", [&lsqw](const httplib::Request &req, httplib::Response &res) {
     try {
-      string electionId=req.matches[1];
-      string kieskringId=req.matches[2];
+      string electionId=req.matches[1]; 
+      string kieskringId=req.matches[2]; // this is only used to select the candidate
       string affid=req.matches[3];
       string candid=req.matches[4];
-      cout<<"kieskringId "<<kieskringId << " affid " << affid <<" candid " << candid<<endl;
-      //      res.set_content("");
+
       auto result =lsqw.query("select * from candentries where electionId=? and kieskringId=? and affid=? and id=?",
                               {electionId, kieskringId, affid, candid});
-      cout<<__LINE__<<endl;
+
       if(!result.empty()) {
-        cout<<result[0]["lastname"]<<endl;
+        auto res2=lsqw.query(R"(select votes,cc.gemeente,cc.gemeenteId, value as totvotes, round(100.0*votes/value,3) as perc from candvotecounts cc, candentries ce, meta where cc.formid='510b' and cc.formid=meta.formid and cc.kieskringId=ce.kieskringId and cc.electionId = ce.electionId and ce.electionId = meta.electionId and cc.gemeenteId = meta.gemeenteId and kind='totalcounted' and cc.affid = ce.affid and cc.candid=ce.id and ce.electionId=? and lastname=? and firstname=? and cc.affid=? order by perc desc)", {electionId, get<string>(result[0]["lastname"]), get<string>(result[0]["firstname"]), affid});
         
-        auto res2=lsqw.query(R"(select votes,cc.gemeente,cc.gemeenteId, value as totvotes, round(100.0*votes/value,3) as perc from candvotecounts cc, candentries ce, meta where cc.formid='510b' and cc.formid=meta.formid and cc.kieskringId=ce.kieskringId and cc.electionId = ce.electionId and ce.electionId = meta.electionId and cc.gemeenteId = meta.gemeenteId and kind='totalcounted' and cc.affid = ce.affid and cc.candid=ce.id and ce.electionId=? and lastname=? and firstname=? and cc.affid=? order by perc desc)", {electionId, result[0]["lastname"], result[0]["firstname"], affid});
-        
-          auto rows = packResultsRaw(res2);
+          auto rows = packResultsJson(res2);
           nlohmann::json ret;
           for(const auto& s : {"lastname", "firstname", "prefix", "gender", "woonplaats", "initials"})
-            ret[s]=result[0][s];
+            ret[s]=get<string>(result[0][s]);
           ret["rows"]=rows;
           res.set_content(ret.dump(), "application/json");
         }
@@ -403,40 +356,40 @@ from meta where formid='510d' and electionId=?)", {electionId});
       
       auto result = lsqw.query("select affid,sum(votes) as svotes from affvotecounts where formid='510d' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["affid"].c_str())].f510d = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["affid"])].f510d = get<int64_t>(r["svotes"]);
       }
 
       result = lsqw.query("select affid,sum(votes) as svotes from affvotecounts where formid='510c' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["affid"].c_str())].f510c = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["affid"])].f510c = get<int64_t>(r["svotes"]);
       }
 
       result = lsqw.query("select affid,sum(votes) as svotes from affvotecounts where formid='510b' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["affid"].c_str())].f510b = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["affid"])].f510b = get<int64_t>(r["svotes"]);
       }
 
       result = lsqw.query("select affid,sum(votes) as svotes from ruaffvotecounts where formid='510b' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["affid"].c_str())].f510a = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["affid"])].f510a = get<int64_t>(r["svotes"]);
       }
-      vector<unordered_map<string,string>> endres;
+      vector<unordered_map<string, MiniSQLite::outvar_t>> endres;
       for(auto& v : votes) {
         
         if(v.second.f510d != v.second.f510c || v.second.f510c != v.second.f510b || v.second.f510b != v.second.f510a) {
           v.second.discrepancy = true;
         }
-        unordered_map<string,string> row;
-        row["affid"]=to_string(v.first);
-        row["votes510d"] = to_string(v.second.f510d);
-        row["votes510c"] = to_string(v.second.f510c);
-        row["votes510b"] = to_string(v.second.f510b);
-        row["votes510a"] = to_string(v.second.f510a);
+        unordered_map<string, MiniSQLite::outvar_t> row;
+        row["affid"]=v.first;
+        row["votes510d"] = v.second.f510d;
+        row["votes510c"] = v.second.f510c;
+        row["votes510b"] = v.second.f510b;
+        row["votes510a"] = v.second.f510a;
         row["discrepancy"] = v.second.discrepancy ? "true" : "false";
         endres.push_back(row);
       }
       
-      res.set_content(packResults(endres), "application/json");
+      res.set_content(packResultsJsonStr(endres), "application/json");
     }
     catch(exception& e) {
       cerr<<"Error: "<<e.what()<<endl;
@@ -456,40 +409,40 @@ from meta where formid='510d' and electionId=?)", {electionId});
       
       auto result = lsqw.query("select kieskringId,sum(votes) as svotes from ruaffvotecounts where formid='510d' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["kieskringId"].c_str())].f510d = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["kieskringId"])].f510d = get<int64_t>(r["svotes"]);
       }
 
       result = lsqw.query("select kieskringId,sum(votes) as svotes from affvotecounts where formid='510c' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["kieskringId"].c_str())].f510c = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["kieskringId"])].f510c = get<int64_t>(r["svotes"]);
       }
 
       result = lsqw.query("select kieskringId,sum(votes) as svotes from affvotecounts where formid='510b' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["kieskringId"].c_str())].f510b = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["kieskringId"])].f510b = get<int64_t>(r["svotes"]);
       }
 
       result = lsqw.query("select kieskringId,sum(votes) as svotes from ruaffvotecounts where formid='510b' and electionId=? group by 1 order by 1 ", {electionId});
       for(auto& r : result) {
-        votes[atoi(r["kieskringId"].c_str())].f510a = atoi(r["svotes"].c_str());
+        votes[get<int64_t>(r["kieskringId"])].f510a = get<int64_t>(r["svotes"]);
       }
-      vector<unordered_map<string,string>> endres;
+      vector<unordered_map<string,MiniSQLite::outvar_t>> endres;
       for(auto& v : votes) {
         
         if(v.second.f510d != v.second.f510c || v.second.f510c != v.second.f510b || v.second.f510b != v.second.f510a) {
           v.second.discrepancy = true;
         }
-        unordered_map<string,string> row;
-        row["kieskringId"]=to_string(v.first);
-        row["votes510d"] = to_string(v.second.f510d);
-        row["votes510c"] = to_string(v.second.f510c);
-        row["votes510b"] = to_string(v.second.f510b);
-        row["votes510a"] = to_string(v.second.f510a);
+        unordered_map<string, MiniSQLite::outvar_t> row;
+        row["kieskringId"]= v.first;
+        row["votes510d"] = v.second.f510d;
+        row["votes510c"] = v.second.f510c;
+        row["votes510b"] = v.second.f510b;
+        row["votes510a"] = v.second.f510a;
         row["discrepancy"] = v.second.discrepancy ? "true" : "false";
         endres.push_back(row);
       }
       
-      res.set_content(packResults(endres), "application/json");
+      res.set_content(packResultsJsonStr(endres), "application/json");
     }
     catch(exception& e) {
       cerr<<"Error: "<<e.what()<<endl;

@@ -44,10 +44,10 @@ function doFetch(f)
                     if(f.grid[affvotes.affid] == undefined) {
                         f.grid[affvotes.affid]={}
                     }
-                    f.totaffs510d += parseInt(affvotes.votes510d);
-                    f.totaffs510c += parseInt(affvotes.votes510c);
-                    f.totaffs510b += parseInt(affvotes.votes510b);
-                    f.totaffs510a += parseInt(affvotes.votes510a);
+                    f.totaffs510d += affvotes.votes510d;
+                    f.totaffs510c += affvotes.votes510c;
+                    f.totaffs510b += affvotes.votes510b;
+                    f.totaffs510a += affvotes.votes510a;
                     
                     
                     f.grid[affvotes.affid].totvotes = affvotes.votes510d;
@@ -62,10 +62,10 @@ function doFetch(f)
                     if(f.kieskringVotes[votes.kieskringId] == undefined) {
                         f.kieskringVotes[votes.kieskringId]={}
                     }
-                    f.totkieskringen510d += parseInt(votes.votes510d);
-                    f.totkieskringen510c += parseInt(votes.votes510c);
-                    f.totkieskringen510b += parseInt(votes.votes510b);
-                    f.totkieskringen510a += parseInt(votes.votes510a);
+                    f.totkieskringen510d += votes.votes510d;
+                    f.totkieskringen510c += votes.votes510c;
+                    f.totkieskringen510b += votes.votes510b;
+                    f.totkieskringen510a += votes.votes510a;
                     f.kieskringVotes[votes.kieskringId].totvotes = votes.votes510d;
                     f.kieskringVotes[votes.kieskringId].votes510c = votes.votes510c;
                     f.kieskringVotes[votes.kieskringId].votes510b = votes.votes510b;
@@ -127,7 +127,7 @@ function getKandidaatSteden(f)
         f.electionName=data[0].name;
         a = new URL(window.location.href)
         kand = a.searchParams.get("kand")
-        console.log(kand)
+
         const obj = JSON.parse(kand);
         fetch("candidate-municipalities/"+f.electionID+"/"+obj[0]+"/"+obj[1]+"/"+obj[2]).then(response => response.json()).then(
             data => { f.steden=data.rows;
@@ -182,7 +182,7 @@ async function doTellingen(f)
                     f.affvotecounts = d;
                     var totalvotes=0;
                     for (const aff of d) {
-                        totalvotes += parseInt(aff.votes);
+                        totalvotes += aff.votes;
                     }
                     f.totalvotes = totalvotes;
                     console.log(`Total votes ${totalvotes}`);
@@ -204,7 +204,7 @@ async function fetchGemeente(f)
             f.affvotecounts=data
             f.totalvotes=0
             for (const aff of data) {
-                f.totalvotes += parseInt(aff.votes);
+                f.totalvotes += aff.votes;
             }
         });
     });
@@ -228,7 +228,7 @@ function fetchStembureau(f)
             f.affvotecounts=data;
             f.totalvotes=0
             for (const aff of data) {
-                f.totalvotes += parseInt(aff.votes);
+                f.totalvotes += aff.votes;
             }
             
         });
