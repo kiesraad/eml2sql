@@ -3,16 +3,8 @@
 #include <vector>
 #include <unordered_map>
 #include <variant>
-
-#ifdef MINGW
-#include "mingw.mutex.h"
-#include "mingw.thread.h"
-#else
 #include <mutex>
 #include <thread>
-#endif
-
-
 #include <iostream>
 #include <map>
 struct sqlite3;
@@ -36,7 +28,9 @@ public:
   void bindPrep(const std::string& table, int idx, unsigned long long value);
   void bindPrep(const std::string& table, int idx, double value);
   void bindPrep(const std::string& table, int idx, const std::string& value);
-  void execPrep(const std::string& table, std::vector<std::unordered_map<std::string, std::string>>* rows=0); 
+
+  typedef std::variant<double, int64_t, std::string, std::nullptr_t> outvar_t; 
+  void execPrep(const std::string& table, std::vector<std::unordered_map<std::string, outvar_t>>* rows=0); 
   void begin();
   void commit();
   void cycle();
@@ -81,9 +75,13 @@ public:
   }
 
   // This is an odd function for a writer - it allows you to do simple queries & get back result as a vector of maps
-  // note that this function is may very well NOT be coherent with addValue
+  // note that this function may very well NOT be coherent with addValue
   // this function is useful for getting values of counters before logging for example
-  std::vector<std::unordered_map<std::string,std::string>> query(const std::string& q, const std::initializer_list<var_t>& values = std::initializer_list<var_t>());  
+  std::vector<std::unordered_map<std::string,std::string>> query(const std::string& q, const std::initializer_list<var_t>& values = std::initializer_list<var_t>());
+
+  // same, but typed
+  std::vector<std::unordered_map<std::string,MiniSQLite::outvar_t>> queryT(const std::string& q, const std::initializer_list<var_t>& values = std::initializer_list<var_t>());
+  
 private:
   void commitThread();
   bool d_pleasequit{false};
@@ -96,5 +94,5 @@ private:
 
   bool haveColumn(const std::string& table, std::string_view name);
   template<typename T>
-  std::vector<std::unordered_map<std::string,std::string>> queryGen(const std::string& q, const T& values);
+  std::vector<std::unordered_map<std::string, MiniSQLite::outvar_t>> queryGen(const std::string& q, const T& values);
 };
