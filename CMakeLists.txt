@@ -18,6 +18,6 @@ find_package(Threads REQUIRED)
 add_executable(emlconv emlconv.cc sqlwriter.cc ext/pugixml-1.13/src/pugixml.cpp)
 target_link_libraries(emlconv pthread  dl sqlite3 )
 
-add_executable(emlserv emlserv.cc sqlwriter.cc  ext/pugixml-1.13/src/pugixml.cpp)
+add_executable(emlserv emlserv.cc sqlwriter.cc  ext/pugixml-1.13/src/pugixml.cpp jsonhelper.cc)
 target_link_libraries(emlserv pthread dl sqlite3 z )
 
