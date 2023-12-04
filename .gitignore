@@ -31,3 +31,8 @@
 *.exe
 *.out
 *.app
+emlconv
+emlserv
+eml.sqlite
+eml.sqlite-wal
+eml.sqlite-shm
