@@ -20,6 +20,7 @@
           <th @click="stembureaus.sort((a,b) => a.ongeldigperc - b.ongeldigperc);">Ongeldig</th>
           <th @click="stembureaus.sort((a,b) => a.toegelaten - b.toegelaten);">Toegelaten</th>          
           <th @click="stembureaus.sort((a,b) => a.delta - b.delta);">Delta</th>
+          <th @click="stembureaus.sort((a,b) => b.geenverklaring - a.geenverklaring);">Onverklaard</th>
           <th @click="stembureaus.sort((a,b) => a.angle - b.angle);">∠</th>
         </tr>
         <template x-for="g in stembureaus">
@@ -33,6 +34,7 @@
             <td x-text="g.ongeldigperc+'%'"></td>
             <td x-text="g.toegelaten"></td>
             <td x-text="g.delta"></td>
+            <td x-text="g.geenverklaring"></td>
             <td x-text="parseFloat(g.angle).toFixed(1)"></td>
           </tr>
         </template>
