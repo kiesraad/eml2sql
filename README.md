@@ -20,30 +20,25 @@ make
  * [Source of EML data](https://data.overheid.nl/community/organization/kiesraad), has all (recent) Dutch elections
  
 Election data comes as three zip files, which need to be unzipped so their
-data ends up in one place. The permission bits are also weird. Unpacking this is a bit tricky, but try:
+data ends up in one place. Here for the latest lower house elections from
+November 2023:
 
 ```bash
-wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-abab-5cd0a436dc4f/resources/EML_bestanden_PS2023_deel_1.zip
-wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-abab-5cd0a436dc4f/resources/EML_bestanden_PS2023_deel_2.zip
-wget https://data.overheid.nl/sites/default/files/dataset/be8b7869-4a12-4446-abab-5cd0a436dc4f/resources/EML_bestanden_PS2023_deel_3.zip
-unzip EML_bestanden_PS2023_deel_1.zip
-chmod -R u+rwX  EML_bestanden_PS2023_deel_1
-mv EML_bestanden_PS2023_deel_1 EML_bestanden_PS2023_deel_2
-unzip EML_bestanden_PS2023_deel_2.zip
-chmod -R u+rwX  EML_bestanden_PS2023_deel_2
-mv EML_bestanden_PS2023_deel_2 EML_bestanden_PS2023_deel_3
-unzip EML_bestanden_PS2023_deel_3.zip
-chmod -R u+rwX  EML_bestanden_PS2023_deel_3
+wget https://data.overheid.nl/sites/default/files/dataset/e3fe6e42-06ab-4559-a466-a32b04247f68/resources/Verkiezingsuitslag%20Tweede%20Kamer%202023%20%28Deel%201%29.zip
+wget https://data.overheid.nl/sites/default/files/dataset/e3fe6e42-06ab-4559-a466-a32b04247f68/resources/Verkiezingsuitslag%20Tweede%20Kamer%202023%20%28Deel%202%29.zip
+wget https://data.overheid.nl/sites/default/files/dataset/e3fe6e42-06ab-4559-a466-a32b04247f68/resources/Verkiezingsuitslag%20Tweede%20Kamer%202023%20%28Deel%203%29.zip
+mkdir tk2023
+cd tk2023
+unzip ../'Verkiezingsuitslag Tweede Kamer 2023 (Deel 1).zip'
+unzip ../'Verkiezingsuitslag Tweede Kamer 2023 (Deel 2).zip'
+unzip ../'Verkiezingsuitslag Tweede Kamer 2023 (Deel 3).zip'
+cd ..
 ``` 
-
-This gets you the results of all provincial elections (Provinciale Staten)
-from 2023. Note that these are 12 completely independent elections, one for
-each province.
 
 # Running
 
 ```bash
-./emlconv EML_bestanden_PS2023_deel3/ZuidHolland
+./emlconv tk2023
 sqlite3 eml.sqlite < useful-views
 ```
 
