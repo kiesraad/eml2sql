@@ -53,6 +53,7 @@ struct Candidate
   string firstname;
   string prefix;
   string lastname;
+  string countrycode;
   string locality;
   string gender;
   string shortcode;
@@ -91,11 +92,20 @@ Candidate parseCandidate(const pugi::xml_node& snode)
     <xnl:LastName>Kegel</xnl:LastName>
     </xnl:PersonName>
     </CandidateFullName>
-    <QualifyingAddress>
-    <xal:Locality>
-    <xal:LocalityName>Nootdorp</xal:LocalityName>
-    </xal:Locality>
-    </QualifyingAddress>
+      <QualifyingAddress>
+        <xal:Locality>
+          <xal:LocalityName>Nootdorp</xal:LocalityName>
+        </xal:Locality>
+      </QualifyingAddress>
+    OR
+      <QualifyingAddress>
+        <xal:Country>
+          <xal:CountryNameCode>US</xal:CountryNameCode>
+          <xal:Locality>
+            <xal:LocalityName>New York</xal:LocalityName>
+          </xal:Locality>
+        </xal:Country>
+      </QualifyingAddress>
     </Candidate>
   */
   if(auto scattr = snode.child("CandidateIdentifier").attribute("ShortCode"))
@@ -126,8 +136,16 @@ Candidate parseCandidate(const pugi::xml_node& snode)
 
   if(auto lnnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:LastName"))
     cand.lastname = lnnode.begin()->value();
-  if(auto wp = snode.child("QualifyingAddress").child("xal:Locality").child("xal:LocalityName"))
-    cand.locality = wp.begin()->value();
+  if(auto nlwp = snode.child("QualifyingAddress").child("xal:Locality").child("xal:LocalityName")){
+    cand.countrycode = "NL";
+    cand.locality = nlwp.begin()->value();
+  }
+  else if (auto country = snode.child("QualifyingAddress").child("xal:Country")){
+    if(auto ccode = country.child("xal:CountryNameCode"))
+      cand.countrycode = ccode.begin()->value();
+    if(auto bwp = country.child("xal:Locality").child("xal:LocalityName"))
+      cand.locality = bwp.begin()->value();
+  }
   
   return cand;
 }
@@ -813,7 +831,7 @@ Regio,RegioCode,OuderRegioCode
               candnames[{aff.id, cand.id}]  = cand.initials + (cand.prefix.empty() ? "" : (" "+cand.prefix)) + " " + cand.lastname;
               sqw.addValue({{"electionId", electionId},{"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"id", cand.id}, {"affid", aff.id},
                             {"firstname", cand.firstname}, {"initials", cand.initials}, {"prefix", cand.prefix}, {"lastname", cand.lastname},
-                            {"gender", cand.gender}, {"woonplaats", cand.locality}
+                            {"gender", cand.gender}, {"landcode", cand.countrycode}, {"woonplaats", cand.locality}
                 }, "candentries");
             }
             else if(cname=="Type") {
