@@ -672,7 +672,7 @@ Regio,RegioCode,OuderRegioCode
                     kieskringId = -1;
                   }
                 }
-                else if(category=="TK") {
+                else if(category=="TK" || category=="EP") {
                   kieskringName=runame;
                   kieskringHSB=ruId;
                   kieskringId = atoi(&ruId.at(3));
