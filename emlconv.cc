@@ -118,33 +118,38 @@ Candidate parseCandidate(const pugi::xml_node& snode)
   else
     cand.id = -1;
 
-  if(auto initnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:NameLine")) {
+  /*
+    We use local-name() in an Xpath query instead of full names for backwards-compatibility with older EML files
+    which specified different XML-namespaces. The candidate lists for EP2019, for example.
+  */ 
+
+  if(auto initnode = snode.select_node("./*[local-name()='CandidateFullName']/*[local-name()='PersonName']/*[local-name()='NameLine']").node())
     if(initnode.begin() != initnode.end()) 
       cand.initials = initnode.begin()->value();
-  }
 
-  if(auto prefixnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:NamePrefix"))
+  if(auto prefixnode = snode.select_node("./CandidateFullName/*[local-name()='PersonName']/*[local-name()='NamePrefix']").node())
     if(prefixnode.begin() != prefixnode.end())
       cand.prefix = prefixnode.begin()->value();
 
   if(auto gennode=snode.child("Gender"))
     cand.gender = gennode.begin()->value();
 
-  if(auto fnnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:FirstName"))
+  if(auto fnnode = snode.select_node("./CandidateFullName/*[local-name()='PersonName']/*[local-name()='FirstName']").node())
     if(fnnode.begin() != fnnode.end())
       cand.firstname = fnnode.begin()->value();
 
-  if(auto lnnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:LastName"))
+  if(auto lnnode = snode.select_node("./CandidateFullName/*[local-name()='PersonName']/*[local-name()='LastName']").node())
     cand.lastname = lnnode.begin()->value();
-  if(auto nlwp = snode.child("QualifyingAddress").child("xal:Locality").child("xal:LocalityName")){
+  
+  if(auto nlwp = snode.select_node("./QualifyingAddress/*[local-name()='Locality']/*[local-name()='LocalityName']").node()){
     cand.countrycode = "NL";
     cand.locality = nlwp.begin()->value();
   }
-  else if (auto country = snode.child("QualifyingAddress").child("xal:Country")){
-    if(auto ccode = country.child("xal:CountryNameCode"))
-      cand.countrycode = ccode.begin()->value();
-    if(auto bwp = country.child("xal:Locality").child("xal:LocalityName"))
-      cand.locality = bwp.begin()->value();
+  else if (auto country = snode.select_node("./QualifyingAddress/*[local-name()='Country']")){
+    if(auto ccode = country.node().select_node("./*[local-name()='CountryNameCode']"))
+      cand.countrycode = ccode.node().begin()->value();
+    if(auto bwp = country.node().select_node("./*[local-name()='Locality']/*[local-name()='LocalityName']"))
+      cand.locality = bwp.node().begin()->value();
   }
   
   return cand;
