@@ -53,6 +53,7 @@ struct Candidate
   string firstname;
   string prefix;
   string lastname;
+  string countrycode;
   string locality;
   string gender;
   string shortcode;
@@ -91,11 +92,20 @@ Candidate parseCandidate(const pugi::xml_node& snode)
     <xnl:LastName>Kegel</xnl:LastName>
     </xnl:PersonName>
     </CandidateFullName>
-    <QualifyingAddress>
-    <xal:Locality>
-    <xal:LocalityName>Nootdorp</xal:LocalityName>
-    </xal:Locality>
-    </QualifyingAddress>
+      <QualifyingAddress>
+        <xal:Locality>
+          <xal:LocalityName>Nootdorp</xal:LocalityName>
+        </xal:Locality>
+      </QualifyingAddress>
+    OR
+      <QualifyingAddress>
+        <xal:Country>
+          <xal:CountryNameCode>US</xal:CountryNameCode>
+          <xal:Locality>
+            <xal:LocalityName>New York</xal:LocalityName>
+          </xal:Locality>
+        </xal:Country>
+      </QualifyingAddress>
     </Candidate>
   */
   if(auto scattr = snode.child("CandidateIdentifier").attribute("ShortCode"))
@@ -108,26 +118,39 @@ Candidate parseCandidate(const pugi::xml_node& snode)
   else
     cand.id = -1;
 
-  if(auto initnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:NameLine")) {
+  /*
+    We use local-name() in an Xpath query instead of full names for backwards-compatibility with older EML files
+    which specified different XML-namespaces. The candidate lists for EP2019, for example.
+  */ 
+
+  if(auto initnode = snode.select_node("./*[local-name()='CandidateFullName']/*[local-name()='PersonName']/*[local-name()='NameLine']").node())
     if(initnode.begin() != initnode.end()) 
       cand.initials = initnode.begin()->value();
-  }
 
-  if(auto prefixnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:NamePrefix"))
+  if(auto prefixnode = snode.select_node("./CandidateFullName/*[local-name()='PersonName']/*[local-name()='NamePrefix']").node())
     if(prefixnode.begin() != prefixnode.end())
       cand.prefix = prefixnode.begin()->value();
 
   if(auto gennode=snode.child("Gender"))
     cand.gender = gennode.begin()->value();
 
-  if(auto fnnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:FirstName"))
+  if(auto fnnode = snode.select_node("./CandidateFullName/*[local-name()='PersonName']/*[local-name()='FirstName']").node())
     if(fnnode.begin() != fnnode.end())
       cand.firstname = fnnode.begin()->value();
 
-  if(auto lnnode = snode.child("CandidateFullName").child("xnl:PersonName").child("xnl:LastName"))
+  if(auto lnnode = snode.select_node("./CandidateFullName/*[local-name()='PersonName']/*[local-name()='LastName']").node())
     cand.lastname = lnnode.begin()->value();
-  if(auto wp = snode.child("QualifyingAddress").child("xal:Locality").child("xal:LocalityName"))
-    cand.locality = wp.begin()->value();
+  
+  if(auto nlwp = snode.select_node("./QualifyingAddress/*[local-name()='Locality']/*[local-name()='LocalityName']").node()){
+    cand.countrycode = "NL";
+    cand.locality = nlwp.begin()->value();
+  }
+  else if (auto country = snode.select_node("./QualifyingAddress/*[local-name()='Country']")){
+    if(auto ccode = country.node().select_node("./*[local-name()='CountryNameCode']"))
+      cand.countrycode = ccode.node().begin()->value();
+    if(auto bwp = country.node().select_node("./*[local-name()='Locality']/*[local-name()='LocalityName']"))
+      cand.locality = bwp.node().begin()->value();
+  }
   
   return cand;
 }
@@ -654,7 +677,7 @@ Regio,RegioCode,OuderRegioCode
                     kieskringId = -1;
                   }
                 }
-                else if(category=="TK") {
+                else if(category=="TK" || category=="EP") {
                   kieskringName=runame;
                   kieskringHSB=ruId;
                   kieskringId = atoi(&ruId.at(3));
@@ -813,7 +836,7 @@ Regio,RegioCode,OuderRegioCode
               candnames[{aff.id, cand.id}]  = cand.initials + (cand.prefix.empty() ? "" : (" "+cand.prefix)) + " " + cand.lastname;
               sqw.addValue({{"electionId", electionId},{"kieskringName", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId}, {"id", cand.id}, {"affid", aff.id},
                             {"firstname", cand.firstname}, {"initials", cand.initials}, {"prefix", cand.prefix}, {"lastname", cand.lastname},
-                            {"gender", cand.gender}, {"woonplaats", cand.locality}
+                            {"gender", cand.gender}, {"landcode", cand.countrycode}, {"woonplaats", cand.locality}
                 }, "candentries");
             }
             else if(cname=="Type") {
