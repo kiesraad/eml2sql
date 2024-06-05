@@ -375,6 +375,7 @@ int main(int argc, char **argv)
       auto start = doc.child("EML").child("ElectionEvent").child("Election");
       //
       int noSeats = 0;
+      int threshold = 0;
       string electionName, electionDomain;
       string category, subcategory;
       for(const auto& node : start) {
@@ -403,6 +404,9 @@ int main(int argc, char **argv)
         }
         else if(name=="kr:NumberOfSeats") {
           noSeats = atoi(node.begin()->value());
+        }
+        else if(name=="kr:PreferenceThreshold") {
+          threshold = atoi(node.begin()->value());
         }
         else if(name=="ElectionIdentifier") {
           electionName=node.child("ElectionName").begin()->value();
@@ -466,8 +470,8 @@ Regio,RegioCode,OuderRegioCode
       */
       
       sqw.addValue({{"id", electionId}, {"name", electionName}, {"domain", electionDomain},
-                    {"seats", noSeats}, {"category", category}, {"subcategory", subcategory},
-                    {"code", category=="PS" ? pscodes[electionDomain] : wscodes[electionDomain]},
+                    {"seats", noSeats}, {"preferenceThreshold", threshold}, {"category", category}, 
+                    {"subcategory", subcategory}, {"code", category=="PS" ? pscodes[electionDomain] : wscodes[electionDomain]},
                     {"oudercode", category=="AB" ? "L528" : ""}}, "election");
     }
     else if(atoi(formid.c_str())==510) { // votes
