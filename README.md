@@ -8,7 +8,7 @@ Please do file issues [on the issue tracker](https://github.com/berthubert/eml2s
 
 # Compiling
 
-Make sure you have installed sqlite3-dev and cmake, and then:
+Make sure you have installed sqlite3-dev, nlohmann-json3-dev and cmake, and then:
 
 ```bash
 cmake .
