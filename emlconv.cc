@@ -779,6 +779,19 @@ Regio,RegioCode,OuderRegioCode
 
                             //              cout<<"  uncountedvotes "<<s2.begin()->value()<<", reason: "<<reason<<endl;
             }
+            else if(lname=="kr:ReportingUnitInvestigations") {
+	      for(auto& inv : s2.children("kr:Investigation")) {
+		string reason = inv.attribute("ReasonCode").value();
+
+		int val = string(inv.begin()->value()) == "true";
+		sqw.addValue({{"electionId", electionId},{"kieskring", kieskringName}, {"kieskringHSB", kieskringHSB}, {"kieskringId", kieskringId},
+			      {"formid", formid}, {"gemeente", gemeente},
+			      {"gemeenteId", gemeenteId},
+			      {"stembureau", stembureau},
+			      {"stembureauId", stembureauId},
+			      {"postcode", postcode},{"category", lname},{"kind", reason}, {"value", val}}, "rumeta");
+	      }
+	    }
             else
               cout<<"Unknown 510 field in ReportingUnit: '"<<lname<<"'"<<endl;
 
