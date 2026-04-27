@@ -1,4 +1,6 @@
+#define CPPHTTPLIB_USE_POLL
 #include "httplib.h"
+
 #include "sqlwriter.hh"
 #include "nlohmann/json.hpp"
 #include <iostream>
