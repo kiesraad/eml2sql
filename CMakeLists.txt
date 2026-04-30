@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.11)
 
 project(emlconv VERSION 1.0
                   DESCRIPTION "convert eml to sqlite"
@@ -20,4 +20,8 @@ target_link_libraries(emlconv pthread  dl sqlite3 )
 
 add_executable(emlserv emlserv.cc sqlwriter.cc  ext/pugixml-1.13/src/pugixml.cpp jsonhelper.cc)
 target_link_libraries(emlserv pthread dl sqlite3 z )
+
+
+add_executable(restzetels restzetels.cc sqlwriter.cc )
+target_link_libraries(restzetels pthread dl sqlite3 z fmt)
 
